@@ -9,6 +9,7 @@ import budgetRoutes from './routes/budgets';
 import categoryRoutes from './routes/categories';
 import reportRoutes from './routes/reports';
 import syncRoutes from './routes/sync';
+import { seedDefaultCategoriesOnStartup } from './lib/seed-categories';
 
 const app = express();
 const PORT = parseInt(process.env.API_PORT || '3000', 10);
@@ -35,8 +36,19 @@ app.use('/api/sync', syncRoutes);
 // Error handler (must be last)
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`API server running on port ${PORT}`);
-});
+async function startServer() {
+  try {
+    await seedDefaultCategoriesOnStartup();
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`API server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('[Startup] Failed to initialize API:', err);
+    process.exit(1);
+  }
+}
+
+void startServer();
 
 export default app;
