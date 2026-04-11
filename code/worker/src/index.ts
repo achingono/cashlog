@@ -46,6 +46,16 @@ cron.schedule('30 */6 * * *', async () => {
   }
 });
 
+// Categorize backfilled transactions 15 minutes after each backfill run
+cron.schedule('45 */6 * * *', async () => {
+  console.log('[Worker] Running: Categorize Backfilled Transactions');
+  try {
+    await categorizeTransactions();
+  } catch (err) {
+    console.error('[Worker] Backfill categorize job failed:', err);
+  }
+});
+
 // Take net worth snapshot daily at midnight
 cron.schedule('0 0 * * *', async () => {
   console.log('[Worker] Running: Net Worth Snapshot');
@@ -74,6 +84,7 @@ console.log('  - Import transactions: every 6 hours (0 */6 * * *)');
 console.log('  - Categorize: 15 min after import (15 */6 * * *)');
 console.log('  - Monthly report: 1st of month at 6AM (0 6 1 * *)');
 console.log('  - Backfill (90-day windows): every 6 hours at :30 (30 */6 * * *)');
+console.log('  - Categorize backfilled transactions: every 6 hours at :45 (45 */6 * * *)');
 console.log('  - Net worth snapshot: daily at midnight (0 0 * * *)');
 
 // Keep process alive

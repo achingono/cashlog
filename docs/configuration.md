@@ -199,6 +199,8 @@ Configured in `worker/src/index.ts`. All times are in the container's timezone (
 |-----|----------------|----------|-------------|
 | **Import Transactions** | `0 */6 * * *` | Every 6 hours (midnight, 6 AM, noon, 6 PM) | Fetches new transactions from SimpleFin |
 | **Categorize Transactions** | `15 */6 * * *` | 15 minutes after each import | AI-categorizes uncategorized transactions |
+| **Backfill Transactions** | `30 */6 * * *` | Every 6 hours at minute 30 | Backfills one 90-day history window per account |
+| **Categorize Backfilled Transactions** | `45 */6 * * *` | 15 minutes after each backfill | AI-categorizes uncategorized backfilled transactions |
 | **Monthly Report** | `0 6 1 * *` | 1st of each month at 6:00 AM | Generates AI-powered monthly financial report |
 | **Net Worth Snapshot** | `0 0 * * *` | Daily at midnight | Records current net worth across all accounts |
 

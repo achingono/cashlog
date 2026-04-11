@@ -307,6 +307,7 @@ The SPA dev server (Vite) will proxy `/api/*` requests to the local API server a
 | ----------------------- | ----------------------- | ----------- |
 | Import Transactions     | Every 6 hours           | Pulls new transactions from SimpleFin |
 | Categorize Transactions | Every 6 hours (+15 min) | AI-categorizes uncategorized transactions |
+| Categorize Backfilled Transactions | Every 6 hours (+45 min) | AI-categorizes uncategorized transactions after backfill |
 | Monthly Report          | 1st of month at 6:00 AM | Generates an LLM narrative report for the previous month |
 | Net Worth Snapshot      | Daily at midnight       | Records point-in-time net worth for trend charts |
 

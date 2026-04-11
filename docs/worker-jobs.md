@@ -30,7 +30,7 @@ The worker service runs as a standalone Docker container alongside the API and S
 | SimpleFin Bridge | Financial data aggregation (accounts & transactions) |
 | Azure OpenAI | LLM for categorization and report generation |
 
-The worker has **4 scheduled cron jobs** and runs an **initial startup sequence** on boot.
+The worker has **6 scheduled cron jobs** and runs an **initial startup sequence** on boot.
 
 ---
 
@@ -40,10 +40,12 @@ The worker has **4 scheduled cron jobs** and runs an **initial startup sequence*
 |-----|----------------|----------|-------------|
 | Import Transactions | `0 */6 * * *` | Every 6 hours (00:00, 06:00, 12:00, 18:00) | Fetches accounts & transactions from SimpleFin |
 | Categorize Transactions | `15 */6 * * *` | 15 min after each import (00:15, 06:15, 12:15, 18:15) | Assigns categories to transactions via Azure OpenAI |
+| Backfill Transactions | `30 */6 * * *` | Every 6 hours at :30 (00:30, 06:30, 12:30, 18:30) | Imports one 90-day historical window per active account |
+| Categorize Backfilled Transactions | `45 */6 * * *` | 15 min after each backfill (00:45, 06:45, 12:45, 18:45) | Assigns categories to uncategorized backfilled transactions |
 | Generate Monthly Report | `0 6 1 * *` | 1st of each month at 6:00 AM | Creates a narrative monthly financial report |
 | Net Worth Snapshot | `0 0 * * *` | Daily at midnight | Records a daily net worth data point |
 
-All times are in the container's timezone. The categorize job is intentionally staggered 15 minutes after import to allow the import to complete first.
+All times are in the container's timezone. Categorization jobs are intentionally staggered 15 minutes after import and backfill to allow ingestion jobs to complete first.
 
 **Source:** [`worker/src/index.ts`](../worker/src/index.ts)
 

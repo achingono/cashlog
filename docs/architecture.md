@@ -188,6 +188,8 @@ A **Prisma Client singleton** is instantiated once and reused across all route h
 | -------------------------- | ----------------------- | ---------------------------------------------------- |
 | Transaction Import         | Every 6 hours           | Pulls new transactions from SimpleFin Bridge         |
 | Transaction Categorization | 15 min after import     | Categorizes uncategorized transactions via Azure OpenAI |
+| Backfill Transactions      | Every 6 hours at :30    | Imports one 90-day historical transaction window per account |
+| Backfill Categorization    | 15 min after backfill   | Categorizes uncategorized transactions imported by backfill |
 | Report Generation          | 1st of month, 6:00 AM  | Generates monthly financial reports via Azure OpenAI  |
 | Net Worth Snapshot         | Daily                   | Records a point-in-time net worth snapshot            |
 

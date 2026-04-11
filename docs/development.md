@@ -231,7 +231,7 @@ code/
         ├── index.ts          # Cron scheduler entry — registers all jobs
         ├── jobs/
         │   ├── import-transactions.ts     # Imports from SimpleFin (every 6h)
-        │   ├── categorize-transactions.ts # AI categorization via Azure OpenAI (15 min after import)
+        │   ├── categorize-transactions.ts # AI categorization via Azure OpenAI (after import and backfill windows)
         │   └── generate-reports.ts        # Monthly report + daily net worth snapshot
         ├── lib/
         │   ├── prisma.ts     # PrismaClient singleton
@@ -577,6 +577,8 @@ The worker uses **node-cron** to schedule background jobs. Each job is an async 
 | ---------------------- | ----------------- | ------------------ |
 | Import transactions    | Every 6 hours     | `0 */6 * * *`      |
 | Categorize transactions| 15 min after import | `15 */6 * * *`   |
+| Backfill transactions  | Every 6 hours at :30 | `30 */6 * * *`  |
+| Categorize backfilled transactions | 15 min after backfill | `45 */6 * * *` |
 | Monthly report         | 1st of month, 6 AM | `0 6 1 * *`      |
 | Net worth snapshot     | Daily at midnight | `0 0 * * *`        |
 
