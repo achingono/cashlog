@@ -64,7 +64,7 @@ DATABASE_URL=postgresql://finance:changeme_in_production@localhost:5432/finance
 DATABASE_URL=postgresql://finance:changeme_in_production@localhost:5432/finance
 ```
 
-Then generate the Prisma client, run migrations, and seed the database:
+Then generate the Prisma client and run migrations:
 
 ```bash
 # Generate the Prisma client (required before any code runs)
@@ -73,11 +73,11 @@ npx prisma generate --schema=prisma/schema.prisma
 # Run database migrations
 npx prisma migrate dev --schema=prisma/schema.prisma
 
-# Seed the database with sample data
-npx ts-node prisma/seed.ts
 ```
 
-> **Tip:** You can also use the root-level shorthand scripts:
+> **Note:** Default categories are now seeded automatically by the API at startup when no categories exist.
+>
+> **Tip:** You can still run the seed script manually if you want to reset category defaults:
 >
 > ```bash
 > npm run db:generate
@@ -121,7 +121,7 @@ Open **http://localhost:5173** in your browser. The Vite dev server proxies all 
 | `SIMPLEFIN_ACCESS_URL`       | Worker   | SimpleFin Bridge access URL                |
 | `AZURE_OPENAI_ENDPOINT`      | Worker   | Azure OpenAI endpoint URL                  |
 | `AZURE_OPENAI_API_KEY`       | Worker   | Azure OpenAI API key                       |
-| `AZURE_OPENAI_DEPLOYMENT`    | Worker   | Model deployment name (default: `gpt-4o`)  |
+| `AZURE_OPENAI_DEPLOYMENT`    | Worker   | Azure deployment name (no default; required for AI jobs) |
 | `AZURE_OPENAI_API_VERSION`   | Worker   | API version (default: `2024-06-01`)        |
 
 ---
@@ -1395,7 +1395,7 @@ The worker requires Azure OpenAI credentials for transaction categorization and 
 ```env
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 ```
 
 If you don't have Azure OpenAI access, you can still run the API and SPA without the worker.

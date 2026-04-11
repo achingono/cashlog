@@ -88,7 +88,7 @@ SIMPLEFIN_ACCESS_URL=https://user:pass@bridge.simplefin.org/simplefin
 |----------|----------|---------|---------|-------------|
 | `AZURE_OPENAI_ENDPOINT` | Yes* | *(empty)* | worker | Azure OpenAI resource endpoint URL |
 | `AZURE_OPENAI_API_KEY` | Yes* | *(empty)* | worker | API key for Azure OpenAI |
-| `AZURE_OPENAI_DEPLOYMENT` | No | `gpt-4o` | worker | Model deployment name |
+| `AZURE_OPENAI_DEPLOYMENT` | Yes* | *(empty)* | worker | Azure deployment name (must match your Azure AI Studio deployment exactly) |
 | `AZURE_OPENAI_API_VERSION` | No | `2024-06-01` | worker | Azure OpenAI API version string |
 
 \* Required for AI-powered transaction categorization and report generation. The worker continues running without these — transaction import still works, but categorization and report generation will not.
@@ -156,7 +156,7 @@ PostgreSQL health check configuration:
 - **Timeout:** 5 seconds
 - **Retries:** 5
 
-The API container runs Prisma migrations on startup before starting the server:
+The API container runs Prisma migrations on startup before starting the server. When the API boots, it also seeds default categories if the categories table is empty:
 
 ```sh
 npx prisma migrate deploy --schema=prisma/schema.prisma && node dist/index.js
@@ -266,7 +266,7 @@ SIMPLEFIN_ACCESS_URL=https://user:pass@bridge.simplefin.org/simplefin
 # Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-azure-openai-api-key
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 AZURE_OPENAI_API_VERSION=2024-06-01
 
 # App Settings

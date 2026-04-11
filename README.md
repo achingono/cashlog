@@ -93,7 +93,7 @@ docker compose up -d --build
 open http://localhost
 ```
 
-> **Note:** On first launch, the database schema will be applied automatically. If you want seeded categories immediately, run `docker compose exec api npx prisma db seed`. The first scheduled SimpleFin sync will run within 6 hours, or you can trigger it manually from **Settings**.
+> **Note:** On first launch, the database schema is applied automatically, and the API seeds default categories on startup when the categories table is empty. The first scheduled SimpleFin sync will run within 6 hours, or you can trigger it manually from **Settings**.
 
 ---
 
@@ -211,7 +211,7 @@ code/worker/src/
 | `SIMPLEFIN_ACCESS_URL`    | SimpleFin Bridge access URL for bank sync  | ✅       | — |
 | `AZURE_OPENAI_ENDPOINT`   | Azure OpenAI service endpoint              | ✅       | — |
 | `AZURE_OPENAI_API_KEY`    | Azure OpenAI API key                       | ✅       | — |
-| `AZURE_OPENAI_DEPLOYMENT` | Azure OpenAI deployment or model name      | ❌       | `gpt-4o` |
+| `AZURE_OPENAI_DEPLOYMENT` | Azure OpenAI deployment name               | ✅       | — |
 | `AZURE_OPENAI_API_VERSION`| Azure OpenAI API version                   | ❌       | `2024-06-01` |
 | `NODE_ENV`                | Environment (`development` or `production`) | ❌       | `production` |
 | `API_PORT`                | API host port                              | ❌       | `3000` |

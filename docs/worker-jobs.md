@@ -135,13 +135,13 @@ The function analyzes the account name (case-insensitive) and balance to assign 
 
 **How it works:**
 
-1. **Fetch leaf categories** — Queries all categories where `parentId` is not null (children only, not parent groups).
+1. **Fetch leaf categories** — Queries categories with no children (true leaves), including top-level categories that do not have subcategories.
 2. **Find uncategorized transactions** — Queries transactions where `categoryId IS NULL` and `isReviewed = false`, ordered by `posted` descending, limited to 90 (`BATCH_SIZE * 3`).
 3. **Batch processing** — Splits transactions into batches of 30. For each batch:
    a. Builds a prompt with the category list and transaction details
    b. Sends to Azure OpenAI (temperature `0.1`, JSON mode)
-   c. Parses the response into `{ transactionId, categoryId }` assignments
-   d. Validates each `categoryId` exists in the known category set
+   c. Parses the response into assignments that may contain `{ transactionId, categoryId }` or `{ transactionId, categoryName }`
+   d. Resolves category IDs directly or by normalized category name
    e. Updates matching transactions with the assigned category
 4. **Logging** — Logs per-batch and total counts.
 
@@ -156,11 +156,19 @@ The function analyzes the account name (case-insensitive) and balance to assign 
 
 **Rate limiting:** Batches are processed sequentially (no parallelism) to avoid exceeding Azure OpenAI rate limits.
 
-**Response parsing:** The code handles both a raw JSON array and an object wrapper with `assignments` or `results` keys:
+**Response parsing:** The code handles:
+- A raw JSON array
+- Object wrappers with `assignments` or `results`
+- A single assignment object
+
+It accepts either `categoryId` (validated against known IDs) or `categoryName` (resolved case-insensitively to a known category):
 
 ```typescript
 const parsed = JSON.parse(content);
-assignments = Array.isArray(parsed) ? parsed : parsed.assignments || parsed.results || [];
+if (Array.isArray(parsed)) assignments = parsed;
+else if (Array.isArray(parsed.assignments)) assignments = parsed.assignments;
+else if (Array.isArray(parsed.results)) assignments = parsed.results;
+else if (parsed.transactionId && (parsed.categoryId || parsed.categoryName)) assignments = [parsed];
 ```
 
 **LLM prompt template** (from [`worker/src/prompts/categorize.ts`](../worker/src/prompts/categorize.ts)):
@@ -179,10 +187,8 @@ Transactions to categorize:
 { "id": "txn_2", "description": "NETFLIX.COM", "amount": "-15.99" }
 ...
 
-Respond with a JSON array of objects, each with "transactionId" and "categoryId" fields. Example:
-[
-  { "transactionId": "abc123", "categoryId": "cat456" }
-]
+Respond with a JSON object with an "assignments" array.
+Each assignment must include "transactionId" and either "categoryId" or "categoryName".
 
 Only output valid JSON. No explanations.
 ```
@@ -388,7 +394,7 @@ const client = new AzureOpenAI({
   endpoint: process.env.AZURE_OPENAI_ENDPOINT || '',
   apiKey: process.env.AZURE_OPENAI_API_KEY || '',
   apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-06-01',
-  deployment: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+  deployment: process.env.AZURE_OPENAI_DEPLOYMENT || '',
 });
 ```
 
@@ -399,7 +405,7 @@ const client = new AzureOpenAI({
 | `AZURE_OPENAI_ENDPOINT` | _(required)_ | Azure OpenAI resource endpoint URL |
 | `AZURE_OPENAI_API_KEY` | _(required)_ | Azure OpenAI API key |
 | `AZURE_OPENAI_API_VERSION` | `2024-06-01` | Azure OpenAI API version |
-| `AZURE_OPENAI_DEPLOYMENT` | `gpt-4o` | Model deployment name |
+| `AZURE_OPENAI_DEPLOYMENT` | _(required)_ | Azure deployment name (exact match required) |
 
 **LLM parameters by job:**
 
@@ -548,4 +554,4 @@ cron.schedule('0 12 * * *', async () => {
 | `AZURE_OPENAI_ENDPOINT` | Yes | — | Azure OpenAI client |
 | `AZURE_OPENAI_API_KEY` | Yes | — | Azure OpenAI client |
 | `AZURE_OPENAI_API_VERSION` | No | `2024-06-01` | Azure OpenAI client |
-| `AZURE_OPENAI_DEPLOYMENT` | No | `gpt-4o` | Azure OpenAI model selection |
+| `AZURE_OPENAI_DEPLOYMENT` | Yes | — | Azure OpenAI deployment selection |

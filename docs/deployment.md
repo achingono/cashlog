@@ -77,7 +77,7 @@ All variables are defined in `.env.example`. Copy it to `.env` and fill in the v
 | `SIMPLEFIN_ACCESS_URL` | **Yes** | *(empty)* | SimpleFin Bridge access URL (see Section 4) |
 | `AZURE_OPENAI_ENDPOINT` | **Yes** | *(empty)* | Azure OpenAI resource endpoint, e.g. `https://your-resource.openai.azure.com/` |
 | `AZURE_OPENAI_API_KEY` | **Yes** | *(empty)* | Azure OpenAI API key |
-| `AZURE_OPENAI_DEPLOYMENT` | No | `gpt-4o` | Azure OpenAI model deployment name |
+| `AZURE_OPENAI_DEPLOYMENT` | **Yes** | *(empty)* | Azure OpenAI deployment name (exact Azure AI Studio deployment name) |
 | `AZURE_OPENAI_API_VERSION` | No | `2024-06-01` | Azure OpenAI API version |
 | `NODE_ENV` | No | `production` | Node environment (`production` or `development`) |
 | `API_PORT` | No | `3000` | Host port mapped to the API container |
@@ -144,7 +144,7 @@ Azure OpenAI powers the LLM features such as transaction categorization and fina
    ```env
    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
    AZURE_OPENAI_API_KEY=your-api-key-here
-   AZURE_OPENAI_DEPLOYMENT=gpt-4o
+   AZURE_OPENAI_DEPLOYMENT=your-deployment-name
    AZURE_OPENAI_API_VERSION=2024-06-01
    ```
 
