@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import openai from '../lib/openai';
+import openai, { getMissingAzureOpenAIConfig } from '../lib/openai';
 import { buildMonthlyReportPrompt } from '../prompts/report';
 
 function decimalToNumber(val: any): number {
@@ -8,6 +8,12 @@ function decimalToNumber(val: any): number {
 }
 
 export async function generateMonthlyReport(): Promise<void> {
+  const missingConfig = getMissingAzureOpenAIConfig();
+  if (missingConfig.length > 0) {
+    console.warn(`[Report] Skipping: missing Azure OpenAI config (${missingConfig.join(', ')})`);
+    return;
+  }
+
   const now = new Date();
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
@@ -68,9 +74,9 @@ export async function generateMonthlyReport(): Promise<void> {
 
   try {
     const response = await openai.chat.completions.create({
-      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+      model: process.env.AZURE_OPENAI_DEPLOYMENT!,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      temperature: process.env.AZURE_OPENAI_TEMPERATURE ? Number(process.env.AZURE_OPENAI_TEMPERATURE) : 1,
       response_format: { type: 'json_object' },
     });
 
@@ -93,6 +99,12 @@ export async function generateMonthlyReport(): Promise<void> {
 
     console.log(`[Report] Monthly report for ${period} generated successfully`);
   } catch (err) {
+    if ((err as { code?: string }).code === 'DeploymentNotFound') {
+      console.error(
+        `[Report] Azure deployment not found: "${process.env.AZURE_OPENAI_DEPLOYMENT}". ` +
+        'Set AZURE_OPENAI_DEPLOYMENT to your exact Azure deployment name.'
+      );
+    }
     console.error('[Report] Failed to generate report:', err);
   }
 }
