@@ -1,0 +1,152 @@
+export interface Account {
+  id: string;
+  name: string;
+  institution: string | null;
+  type: AccountType;
+  currency: string;
+  balance: number;
+  availableBalance: number | null;
+  balanceDate: string;
+  transactionCount: number;
+}
+
+export interface AccountDetail extends Account {
+  externalId: string;
+  institutionDomain: string | null;
+  isActive: boolean;
+  recentTransactions: TransactionSummary[];
+}
+
+export interface TransactionSummary {
+  id: string;
+  posted: string;
+  amount: number;
+  description: string;
+  payee: string | null;
+  category: CategoryRef | null;
+}
+
+export interface Transaction {
+  id: string;
+  posted: string;
+  amount: number;
+  description: string;
+  payee: string | null;
+  memo: string | null;
+  isReviewed: boolean;
+  account: { id: string; name: string; institution: string | null };
+  category: CategoryRef | null;
+}
+
+export interface CategoryRef {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  parentId: string | null;
+  children: Category[];
+}
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  amount: number;
+  spent: number;
+  remaining: number;
+  percentUsed: number;
+  period: string;
+  startDate: string;
+  endDate: string | null;
+}
+
+export interface Report {
+  id: string;
+  title: string;
+  type: string;
+  content: ReportContent;
+  period: string;
+  generatedAt: string;
+}
+
+export interface ReportContent {
+  title: string;
+  highlights: string[];
+  incomeAnalysis: string;
+  expenseAnalysis: string;
+  savingsAnalysis: string;
+  topExpenseInsights: string[];
+  recommendations: string[];
+  overallScore: string;
+  scoreExplanation: string;
+}
+
+export interface DashboardSummary {
+  netWorth: number;
+  totalAssets: number;
+  totalLiabilities: number;
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlyNet: number;
+}
+
+export interface TrendDataPoint {
+  date: string;
+  value: number;
+}
+
+export interface SpendingByCategory {
+  category: CategoryRef;
+  total: number;
+}
+
+export interface HoldingsSummary {
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  accounts: Account[];
+}
+
+export interface SyncStatus {
+  id: string;
+  status: 'RUNNING' | 'SUCCESS' | 'FAILED';
+  accountCount: number;
+  transactionCount: number;
+  errorMessage: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export type AccountType = 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'INVESTMENT' | 'LOAN' | 'MORTGAGE' | 'OTHER';
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  CHECKING: 'Checking',
+  SAVINGS: 'Savings',
+  CREDIT_CARD: 'Credit Card',
+  INVESTMENT: 'Investment',
+  LOAN: 'Loan',
+  MORTGAGE: 'Mortgage',
+  OTHER: 'Other',
+};
+
+export const ASSET_TYPES: AccountType[] = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
+export const LIABILITY_TYPES: AccountType[] = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];

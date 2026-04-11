@@ -1,0 +1,52 @@
+import { useState, useEffect } from "react";
+import { useTransactions } from "@/hooks/use-transactions";
+import { TransactionFilters } from "@/components/transactions/TransactionFilters";
+import { TransactionTable } from "@/components/transactions/TransactionTable";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "@/lib/api";
+import type { Account, Category } from "@/types";
+
+export function TransactionsPage() {
+  const { transactions, pagination, loading, filters, updateFilters, setPage } = useTransactions();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    Promise.all([api.getAccounts(), api.getCategories()])
+      .then(([a, c]) => {
+        setAccounts(a.data);
+        setCategories(c.data);
+      })
+      .catch(console.error);
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
+
+      <TransactionFilters
+        accounts={accounts}
+        categories={categories}
+        filters={filters}
+        onFilterChange={updateFilters}
+      />
+
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 space-y-3">
+              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-12 rounded" />)}
+            </div>
+          ) : (
+            <TransactionTable
+              transactions={transactions}
+              pagination={pagination}
+              onPageChange={setPage}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
