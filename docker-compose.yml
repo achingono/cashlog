@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finance}
+      POSTGRES_USER: ${POSTGRES_USER:-finance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-finance} -d ${POSTGRES_DB:-finance}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: code
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-finance}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-finance}
+      NODE_ENV: ${NODE_ENV:-production}
+      API_PORT: "3000"
+    command: >
+      sh -c "if [ -d prisma/migrations ] && [ \"$(ls -A prisma/migrations 2>/dev/null)\" ]; then npx prisma migrate deploy --schema=prisma/schema.prisma; else npx prisma db push --schema=prisma/schema.prisma; fi && node dist/index.js"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  spa:
+    build:
+      context: code
+      dockerfile: spa/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${SPA_PORT:-80}:80"
+
+  worker:
+    build:
+      context: code
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-finance}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-finance}
+      NODE_ENV: ${NODE_ENV:-production}
+      SIMPLEFIN_ACCESS_URL: ${SIMPLEFIN_ACCESS_URL:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-gpt-4o}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2024-06-01}
+    volumes:
+      - ./.config/simplefin-cli:/root/.simplefin-cli
+
+volumes:
+  pgdata:
