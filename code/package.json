@@ -1,0 +1,22 @@
+{
+  "name": "finance-dashboard",
+  "private": true,
+  "workspaces": ["api", "spa", "worker"],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=api",
+    "dev:spa": "npm run dev --workspace=spa",
+    "dev:worker": "npm run dev --workspace=worker",
+    "build": "npm run build --workspaces",
+    "db:migrate": "npx prisma migrate dev --schema=prisma/schema.prisma",
+    "db:generate": "npx prisma generate --schema=prisma/schema.prisma",
+    "db:seed": "npx ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "devDependencies": {
+    "prisma": "^6.5.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.7.0"
+  }
+}
