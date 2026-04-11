@@ -1,0 +1,63 @@
+import { prisma } from '../lib/prisma';
+import { decimalToNumber, AccountWithStats } from '../lib/types';
+
+export async function getAllAccounts(): Promise<AccountWithStats[]> {
+  const accounts = await prisma.account.findMany({
+    where: { isActive: true },
+    include: {
+      _count: { select: { transactions: true } },
+    },
+    orderBy: [{ type: 'asc' }, { name: 'asc' }],
+  });
+
+  return accounts.map((a) => ({
+    id: a.id,
+    name: a.name,
+    institution: a.institution,
+    type: a.type,
+    currency: a.currency,
+    balance: decimalToNumber(a.balance),
+    availableBalance: a.availableBalance ? decimalToNumber(a.availableBalance) : null,
+    balanceDate: a.balanceDate,
+    transactionCount: a._count.transactions,
+  }));
+}
+
+export async function getAccountById(id: string) {
+  const account = await prisma.account.findUnique({
+    where: { id },
+    include: {
+      transactions: {
+        orderBy: { posted: 'desc' },
+        take: 20,
+        include: { category: true },
+      },
+      _count: { select: { transactions: true } },
+    },
+  });
+
+  if (!account) return null;
+
+  return {
+    id: account.id,
+    externalId: account.externalId,
+    name: account.name,
+    institution: account.institution,
+    institutionDomain: account.institutionDomain,
+    type: account.type,
+    currency: account.currency,
+    balance: decimalToNumber(account.balance),
+    availableBalance: account.availableBalance ? decimalToNumber(account.availableBalance) : null,
+    balanceDate: account.balanceDate,
+    isActive: account.isActive,
+    transactionCount: account._count.transactions,
+    recentTransactions: account.transactions.map((t) => ({
+      id: t.id,
+      posted: t.posted,
+      amount: decimalToNumber(t.amount),
+      description: t.description,
+      payee: t.payee,
+      category: t.category ? { id: t.category.id, name: t.category.name, icon: t.category.icon, color: t.category.color } : null,
+    })),
+  };
+}

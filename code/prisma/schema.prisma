@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String      @id @default(cuid())
+  externalId        String      @unique
+  name              String
+  institution       String?
+  institutionDomain String?
+  currency          String      @default("USD")
+  type              AccountType @default(CHECKING)
+  balance           Decimal     @db.Decimal(15, 2)
+  availableBalance  Decimal?    @db.Decimal(15, 2)
+  balanceDate       DateTime
+  isActive          Boolean     @default(true)
+  backfillCursor    DateTime?
+  backfillComplete  Boolean     @default(false)
+  backfillUpdatedAt DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  transactions Transaction[]
+
+  @@index([type])
+  @@index([isActive])
+}
+
+model Transaction {
+  id          String    @id @default(cuid())
+  externalId  String    @unique
+  accountId   String
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  posted      DateTime
+  amount      Decimal   @db.Decimal(15, 2)
+  description String
+  payee       String?
+  memo        String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  isReviewed  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([posted])
+  @@index([accountId, posted])
+}
+
+model Category {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  icon     String?
+  color    String?
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  createdAt DateTime @default(now())
+
+  @@index([parentId])
+}
+
+model Budget {
+  id         String       @id @default(cuid())
+  categoryId String
+  category   Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Decimal      @db.Decimal(15, 2)
+  period     BudgetPeriod @default(MONTHLY)
+  startDate  DateTime
+  endDate    DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([categoryId])
+}
+
+model Report {
+  id          String     @id @default(cuid())
+  title       String
+  type        ReportType
+  content     Json
+  period      String
+  generatedAt DateTime   @default(now())
+
+  @@index([type])
+  @@index([period])
+}
+
+model SyncLog {
+  id               String     @id @default(cuid())
+  status           SyncStatus
+  accountCount     Int        @default(0)
+  transactionCount Int        @default(0)
+  errorMessage     String?
+  startedAt        DateTime   @default(now())
+  completedAt      DateTime?
+
+  @@index([status])
+  @@index([startedAt])
+}
+
+model NetWorthSnapshot {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  totalAssets Decimal  @db.Decimal(15, 2)
+  totalLiabilities Decimal @db.Decimal(15, 2)
+  netWorth    Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT_CARD
+  INVESTMENT
+  LOAN
+  MORTGAGE
+  OTHER
+}
+
+enum BudgetPeriod {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ReportType {
+  MONTHLY_SUMMARY
+  SPENDING_ANALYSIS
+  NET_WORTH_TREND
+  BUDGET_REVIEW
+}
+
+enum SyncStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
