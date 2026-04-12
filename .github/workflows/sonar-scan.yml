@@ -1,0 +1,119 @@
+name: Sonar Scan
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review  
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false 
+    permissions:
+      contents: write
+
+    services:
+      sonarqube:
+        image: sonarqube:community
+        ports:
+          - 9000:9000
+        env:
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+        options: >-
+          --health-cmd "curl -sf http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"
+          --health-interval 15s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 120s
+
+    env:
+      SONAR_HOST_URL: http://localhost:9000
+      SONAR_PROJECT_KEY: achingono_money
+      SONAR_PROJECT_NAME: money
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Make Sonar scripts executable
+        run: chmod +x scripts/sonar/*.sh
+
+      - name: Run comprehensive SonarQube scan
+        run: scripts/sonar/run-scan.sh
+
+      - name: Summarize Sonar issues by rule
+        run: scripts/sonar/summarize-issues.sh .sonar/issues.json .sonar
+
+      - name: Create PRDs from discovered issue clusters
+        run: scripts/sonar/generate-prds.sh .sonar/issues.json docs
+
+      - name: Upload Sonar results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-scan-results
+          path: |
+            .sonar/issues.json
+            .sonar/issues.tsv
+            .sonar/issues-top-sample.tsv
+            .sonar/rule-counts.tsv
+            .sonar/rule-counts-top20.tsv
+            .sonar/top-rule-violations.txt
+            docs/sonar-prds
+
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot
+          
+      - name: Create unique fix branch
+        id: fix-branch
+        run: |
+          BRANCH_NAME="chore/sonar-auto-fix-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(date +%s)"
+          echo "branch=${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+          git checkout -b "${BRANCH_NAME}"
+
+      - name: Run Copilot CLI to apply Sonar fixes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          copilot --allow-all "Read .sonar/issues.json and apply code fixes for all open SonarQube issues in this repository. Keep behavior unchanged, update docs/sonar-prds with scripts/sonar/generate-prds.sh after fixes, and leave the repository in a buildable state."
+
+      - name: Regenerate Sonar artifacts after Copilot fixes
+        run: |
+          scripts/sonar/run-scan.sh
+          scripts/sonar/summarize-issues.sh .sonar/issues.json .sonar
+          scripts/sonar/generate-prds.sh .sonar/issues.json docs
+
+      - name: Commit and push fix branch
+        env:
+          BRANCH_NAME: ${{ steps.fix-branch.outputs.branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No changes to commit and push."
+            exit 0
+          fi
+          git add -A
+          git commit -m "chore: apply Copilot Sonar fixes (${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT})"
+          git push --set-upstream origin "${BRANCH_NAME}"
+
+      - name: Upload post-fix Sonar results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-post-fix-results
+          path: |
+            .sonar/issues.json
+            .sonar/issues.tsv
+            .sonar/issues-top-sample.tsv
+            .sonar/rule-counts.tsv
+            .sonar/rule-counts-top20.tsv
+            .sonar/top-rule-violations.txt
+            docs/sonar-prds

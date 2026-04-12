@@ -51,4 +51,6 @@ The GitHub Actions workflow `.github/workflows/scheduled-scan.yml` runs weekly a
 2. Runs a full scan.
 3. Generates rule-level issue summaries.
 4. Generates PRDs for issue clusters.
-5. Opens/updates a PR containing `docs/sonar-prds`.
+5. Creates a unique branch per run (`chore/sonar-auto-fix-<run-id>-<attempt>-<timestamp>`).
+6. Runs GitHub Copilot CLI to apply fixes from `.sonar/issues.json`.
+7. Re-runs scan and summary generation, commits any changes, and pushes the branch.
