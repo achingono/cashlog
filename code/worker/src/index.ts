@@ -3,6 +3,8 @@ import { importTransactions } from './jobs/import-transactions';
 import { backfillTransactions } from './jobs/backfill-transactions';
 import { categorizeTransactions } from './jobs/categorize-transactions';
 import { generateMonthlyReport, takeNetWorthSnapshot } from './jobs/generate-reports';
+import { valuateAssets } from './jobs/valuate-assets';
+import { updateGoalProgress } from './jobs/update-goal-progress';
 
 console.log('[Worker] Starting cron scheduler...');
 
@@ -66,6 +68,26 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
+// Update goal progress daily at 12:05 AM (after snapshot)
+cron.schedule('5 0 * * *', async () => {
+  console.log('[Worker] Running: Update Goal Progress');
+  try {
+    await updateGoalProgress();
+  } catch (err) {
+    console.error('[Worker] Goal progress job failed:', err);
+  }
+});
+
+// Valuate assets weekly on Sundays at 3 AM
+cron.schedule('0 3 * * 0', async () => {
+  console.log('[Worker] Running: Valuate Assets');
+  try {
+    await valuateAssets();
+  } catch (err) {
+    console.error('[Worker] Asset valuation job failed:', err);
+  }
+});
+
 // Run initial import on startup (after 10 second delay)
 setTimeout(async () => {
   console.log('[Worker] Running initial import...');
@@ -74,6 +96,7 @@ setTimeout(async () => {
     await backfillTransactions();
     await categorizeTransactions();
     await takeNetWorthSnapshot();
+    await updateGoalProgress();
   } catch (err) {
     console.error('[Worker] Initial run failed:', err);
   }
@@ -86,6 +109,8 @@ console.log('  - Monthly report: 1st of month at 6AM (0 6 1 * *)');
 console.log('  - Backfill (90-day windows): every 6 hours at :30 (30 */6 * * *)');
 console.log('  - Categorize backfilled transactions: every 6 hours at :45 (45 */6 * * *)');
 console.log('  - Net worth snapshot: daily at midnight (0 0 * * *)');
+console.log('  - Update goal progress: daily at 12:05 AM (5 0 * * *)');
+console.log('  - Valuate assets: weekly on Sundays at 3 AM (0 3 * * 0)');
 
 // Keep process alive
 process.on('SIGTERM', () => {

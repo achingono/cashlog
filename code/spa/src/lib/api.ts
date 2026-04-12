@@ -77,4 +77,45 @@ export const api = {
   getSyncStatus: () => request<{ data: import('../types').SyncStatus | null }>('/sync/status'),
   getSyncHistory: (limit = 10) => request<{ data: import('../types').SyncStatus[] }>(`/sync/history?limit=${limit}`),
   triggerSync: () => request('/sync/trigger', { method: 'POST' }),
+
+  // Assets
+  getAssets: () => request<{ data: import('../types').Asset[] }>('/assets'),
+  getAsset: (id: string) => request<{ data: import('../types').Asset }>(`/assets/${id}`),
+  createAsset: (data: {
+    name: string;
+    type?: string;
+    purchasePrice: number;
+    currentValue: number;
+    purchaseDate?: string;
+    address?: string;
+    metadata?: Record<string, any>;
+  }) => request<{ data: import('../types').Asset }>('/assets', { method: 'POST', body: JSON.stringify(data) }),
+  updateAsset: (id: string, data: any) =>
+    request<{ data: import('../types').Asset }>(`/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAsset: (id: string) => request(`/assets/${id}`, { method: 'DELETE' }),
+  addAssetValuation: (id: string, data: { value: number; source?: string }) =>
+    request<{ data: import('../types').AssetValuation }>(`/assets/${id}/valuations`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Goals
+  getGoals: (status?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    const qs = params.toString();
+    return request<{ data: import('../types').Goal[] }>(`/goals${qs ? `?${qs}` : ''}`);
+  },
+  getGoal: (id: string) => request<{ data: import('../types').Goal }>(`/goals/${id}`),
+  createGoal: (data: {
+    name: string;
+    targetAmount: number;
+    targetDate?: string;
+    icon?: string;
+    color?: string;
+    notes?: string;
+    accountIds?: string[];
+  }) => request<{ data: import('../types').Goal }>('/goals', { method: 'POST', body: JSON.stringify(data) }),
+  updateGoal: (id: string, data: any) =>
+    request<{ data: import('../types').Goal }>(`/goals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateGoalStatus: (id: string, status: string) =>
+    request<{ data: import('../types').Goal }>(`/goals/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  deleteGoal: (id: string) => request(`/goals/${id}`, { method: 'DELETE' }),
 };

@@ -1,17 +1,21 @@
 import { prisma } from '../lib/prisma';
 import { HoldingsSummary, decimalToNumber, TrendDataPoint } from '../lib/types';
+import { getTotalAssetValue } from './asset.service';
 
 const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
 const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
 
 export async function getHoldings(): Promise<HoldingsSummary> {
-  const accounts = await prisma.account.findMany({
-    where: { isActive: true },
-    include: { _count: { select: { transactions: true } } },
-    orderBy: [{ type: 'asc' }, { name: 'asc' }],
-  });
+  const [accounts, manualAssetValue] = await Promise.all([
+    prisma.account.findMany({
+      where: { isActive: true },
+      include: { _count: { select: { transactions: true } } },
+      orderBy: [{ type: 'asc' }, { name: 'asc' }],
+    }),
+    getTotalAssetValue(),
+  ]);
 
-  let totalAssets = 0;
+  let totalAssets = manualAssetValue;
   let totalLiabilities = 0;
 
   const accountList = accounts.map((a) => {

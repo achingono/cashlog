@@ -1,8 +1,23 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { getBudgets, createBudget, updateBudget, deleteBudget } from '../services/budget.service';
-import { AppError } from '../middleware/error-handler';
+import { validate } from '../middleware/validation';
 
 const router = Router();
+
+const createBudgetSchema = z.object({
+  categoryId: z.string().min(1, 'categoryId is required'),
+  amount: z.number().positive('amount must be positive'),
+  period: z.enum(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']).optional().default('MONTHLY'),
+  startDate: z.string().optional().transform((v) => v ? new Date(v) : new Date()),
+  endDate: z.string().optional().transform((v) => v ? new Date(v) : undefined),
+});
+
+const updateBudgetSchema = z.object({
+  amount: z.number().positive().optional(),
+  period: z.enum(['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']).optional(),
+  endDate: z.string().nullable().optional().transform((v) => v ? new Date(v) : undefined),
+});
 
 router.get('/', async (_req, res, next) => {
   try {
@@ -13,18 +28,14 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', validate(createBudgetSchema, 'body'), async (req, res, next) => {
   try {
-    const { categoryId, amount, period, startDate, endDate } = req.body;
-    if (!categoryId || !amount) {
-      throw new AppError(400, 'categoryId and amount are required', 'VALIDATION_ERROR');
-    }
     const budget = await createBudget({
-      categoryId,
-      amount,
-      period: period || 'MONTHLY',
-      startDate: startDate ? new Date(startDate) : new Date(),
-      endDate: endDate ? new Date(endDate) : undefined,
+      categoryId: req.body.categoryId,
+      amount: req.body.amount,
+      period: req.body.period,
+      startDate: req.body.startDate,
+      endDate: req.body.endDate,
     });
     res.status(201).json({ data: budget });
   } catch (err) {
@@ -32,9 +43,9 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', validate(updateBudgetSchema, 'body'), async (req, res, next) => {
   try {
-    const budget = await updateBudget(req.params.id, req.body);
+    const budget = await updateBudget(req.params.id as string, req.body);
     res.json({ data: budget });
   } catch (err) {
     next(err);
@@ -43,7 +54,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    await deleteBudget(req.params.id);
+    await deleteBudget(req.params.id as string);
     res.status(204).send();
   } catch (err) {
     next(err);

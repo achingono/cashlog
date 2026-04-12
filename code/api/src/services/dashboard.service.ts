@@ -1,13 +1,17 @@
 import { prisma } from '../lib/prisma';
 import { DashboardSummary, TrendDataPoint, decimalToNumber } from '../lib/types';
+import { getTotalAssetValue } from './asset.service';
 
 const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
 const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const accounts = await prisma.account.findMany({ where: { isActive: true } });
+  const [accounts, manualAssetValue] = await Promise.all([
+    prisma.account.findMany({ where: { isActive: true } }),
+    getTotalAssetValue(),
+  ]);
 
-  let totalAssets = 0;
+  let totalAssets = manualAssetValue;
   let totalLiabilities = 0;
 
   for (const a of accounts) {

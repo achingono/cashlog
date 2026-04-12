@@ -135,6 +135,12 @@ export async function takeNetWorthSnapshot(): Promise<void> {
     else if (LIABILITY_TYPES.includes(a.type)) totalLiabilities += Math.abs(bal);
   }
 
+  // Include manual assets (real estate, etc.)
+  const manualAssetTotal = await prisma.asset.aggregate({
+    _sum: { currentValue: true },
+  });
+  totalAssets += decimalToNumber(manualAssetTotal._sum.currentValue);
+
   await prisma.netWorthSnapshot.create({
     data: {
       date: today,

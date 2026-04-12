@@ -6,6 +6,7 @@ import { TrendLineChart } from "@/components/dashboard/TrendLineChart";
 import { SpendingByCategory } from "@/components/dashboard/SpendingByCategory";
 import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { BudgetProgress } from "@/components/dashboard/BudgetProgress";
+import { GoalProgress } from "@/components/dashboard/GoalProgress";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,7 +14,7 @@ export function DashboardPage() {
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [period, setPeriod] = useState("6");
   const accountId = selectedAccount === "all" ? undefined : selectedAccount;
-  const { summary, trends, spending, budgets, loading, error } = useDashboard(accountId);
+  const { summary, trends, spending, budgets, goals, loading, error } = useDashboard(accountId);
   const { accounts } = useAccounts();
 
   if (error) {
@@ -73,6 +74,12 @@ export function DashboardPage() {
         </div>
         <div className="lg:col-span-3">
           <BudgetProgress budgets={budgets} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-7">
+        <div className="lg:col-span-4">
+          <GoalProgress goals={goals} />
         </div>
       </div>
     </div>

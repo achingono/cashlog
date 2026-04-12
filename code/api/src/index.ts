@@ -9,6 +9,8 @@ import budgetRoutes from './routes/budgets';
 import categoryRoutes from './routes/categories';
 import reportRoutes from './routes/reports';
 import syncRoutes from './routes/sync';
+import assetRoutes from './routes/assets';
+import goalRoutes from './routes/goals';
 import { seedDefaultCategoriesOnStartup } from './lib/seed-categories';
 
 const app = express();
@@ -32,6 +34,8 @@ app.use('/api/budgets', budgetRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/goals', goalRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

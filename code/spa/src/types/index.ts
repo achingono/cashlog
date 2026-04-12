@@ -150,3 +150,68 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 
 export const ASSET_TYPES: AccountType[] = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
 export const LIABILITY_TYPES: AccountType[] = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
+
+// Asset types
+export type AssetType = 'REAL_ESTATE' | 'AUTOMOBILE' | 'STOCK';
+
+export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  REAL_ESTATE: 'Real Estate',
+  AUTOMOBILE: 'Automobile',
+  STOCK: 'Stock',
+};
+
+export interface Asset {
+  id: string;
+  name: string;
+  type: AssetType;
+  purchasePrice: number;
+  currentValue: number;
+  purchaseDate: string | null;
+  address: string | null;
+  metadata: Record<string, any> | null;
+  lastValuationDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  valuations: AssetValuation[];
+}
+
+export interface AssetValuation {
+  id: string;
+  value: number;
+  source: string;
+  valuedAt: string;
+}
+
+// Goal types
+export type GoalStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CANCELLED';
+
+export const GOAL_STATUS_LABELS: Record<GoalStatus, string> = {
+  ACTIVE: 'Active',
+  COMPLETED: 'Completed',
+  PAUSED: 'Paused',
+  CANCELLED: 'Cancelled',
+};
+
+export interface Goal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  percentComplete: number;
+  targetDate: string | null;
+  status: GoalStatus;
+  icon: string | null;
+  color: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  accounts: GoalAccountInfo[];
+}
+
+export interface GoalAccountInfo {
+  id: string;
+  name: string;
+  institution: string | null;
+  type: string;
+  balance: number;
+}

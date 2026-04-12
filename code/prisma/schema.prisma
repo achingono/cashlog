@@ -26,6 +26,7 @@ model Account {
   updatedAt         DateTime    @updatedAt
 
   transactions Transaction[]
+  goalAccounts GoalAccount[]
 
   @@index([type])
   @@index([isActive])
@@ -148,4 +149,77 @@ enum SyncStatus {
   RUNNING
   SUCCESS
   FAILED
+}
+
+enum AssetType {
+  REAL_ESTATE
+  AUTOMOBILE
+  STOCK
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+model Asset {
+  id                String           @id @default(cuid())
+  name              String
+  type              AssetType        @default(REAL_ESTATE)
+  purchasePrice     Decimal          @db.Decimal(15, 2)
+  currentValue      Decimal          @db.Decimal(15, 2)
+  purchaseDate      DateTime?
+  address           String?
+  metadata          Json?
+  lastValuationDate DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  valuations AssetValuation[]
+
+  @@index([type])
+}
+
+model AssetValuation {
+  id        String   @id @default(cuid())
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  value     Decimal  @db.Decimal(15, 2)
+  source    String
+  valuedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([assetId, valuedAt])
+}
+
+model Goal {
+  id            String       @id @default(cuid())
+  name          String
+  targetAmount  Decimal      @db.Decimal(15, 2)
+  currentAmount Decimal      @default(0) @db.Decimal(15, 2)
+  targetDate    DateTime?
+  status        GoalStatus   @default(ACTIVE)
+  icon          String?
+  color         String?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  accounts GoalAccount[]
+
+  @@index([status])
+}
+
+model GoalAccount {
+  id        String  @id @default(cuid())
+  goalId    String
+  goal      Goal    @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, accountId])
+  @@index([goalId])
+  @@index([accountId])
 }
