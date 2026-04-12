@@ -1,6 +1,7 @@
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import type { Account, Category } from "@/types";
 
@@ -54,19 +55,17 @@ export function TransactionFilters({ accounts, categories, filters, onFilterChan
         </SelectContent>
       </Select>
 
-      <Input
-        type="date"
-        className="w-[150px]"
-        value={filters.startDate || ''}
-        onChange={(e) => onFilterChange({ startDate: e.target.value || undefined })}
+      <DatePicker
+        className="w-[180px]"
+        value={filters.startDate}
+        onChange={(value) => onFilterChange({ startDate: value })}
         placeholder="Start date"
       />
 
-      <Input
-        type="date"
-        className="w-[150px]"
-        value={filters.endDate || ''}
-        onChange={(e) => onFilterChange({ endDate: e.target.value || undefined })}
+      <DatePicker
+        className="w-[180px]"
+        value={filters.endDate}
+        onChange={(value) => onFilterChange({ endDate: value })}
         placeholder="End date"
       />
 

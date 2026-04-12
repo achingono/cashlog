@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Controller } from "react-hook-form";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Asset, AssetType } from "@/types";
 
 const assetSchema = z.object({
@@ -227,7 +227,17 @@ export function AssetForm({ open, onClose, onSubmit, asset }: AssetFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="purchaseDate">Purchase Date</Label>
-            <Input id="purchaseDate" type="date" {...register("purchaseDate")} />
+            <Controller
+              control={control}
+              name="purchaseDate"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select purchase date"
+                />
+              )}
+            />
           </div>
 
           <DialogFooter>

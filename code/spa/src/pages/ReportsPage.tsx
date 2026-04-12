@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Star, TrendingUp, Lightbulb } from "lucide-react";
 import { api } from "@/lib/api";
@@ -34,7 +35,7 @@ export function ReportsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">{c.title}</h2>
-          <button onClick={() => setSelectedReport(null)} className="text-sm text-muted-foreground hover:text-foreground">← Back to Reports</button>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedReport(null)}>← Back to Reports</Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

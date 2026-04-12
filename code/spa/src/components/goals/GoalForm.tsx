@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { api } from "@/lib/api";
 import type { Account, Goal } from "@/types";
 
@@ -30,7 +31,7 @@ export function GoalForm({ open, onClose, onSubmit, goal }: GoalFormProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GoalFormValues>({
+  const { register, control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GoalFormValues>({
     resolver: zodResolver(goalSchema),
     defaultValues: goal ? {
       name: goal.name,
@@ -109,7 +110,17 @@ export function GoalForm({ open, onClose, onSubmit, goal }: GoalFormProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="targetDate">Target Date</Label>
-              <Input id="targetDate" type="date" {...register("targetDate")} />
+              <Controller
+                control={control}
+                name="targetDate"
+                render={({ field }) => (
+                  <DatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select target date"
+                  />
+                )}
+              />
             </div>
           </div>
 
