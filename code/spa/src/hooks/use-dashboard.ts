@@ -22,6 +22,7 @@ export function useDashboard(accountId?: string, period: string = 'all') {
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     const startDate = periodToStartDate(period);
     Promise.all([
       api.getDashboardSummary(accountId),
@@ -36,6 +37,7 @@ export function useDashboard(accountId?: string, period: string = 'all') {
         setSpending(spendingRes.data);
         setBudgets(budgetsRes.data);
         setGoals(goalsRes.data);
+
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));

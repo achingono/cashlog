@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma';
 import openai, { getMissingAzureOpenAIConfig } from '../lib/openai';
 import { buildMonthlyReportPrompt } from '../prompts/report';
+import { isAssetType, isLiabilityType } from '../lib/account-types';
 
 function decimalToNumber(val: any): number {
   if (val === null || val === undefined) return 0;
@@ -115,24 +116,37 @@ export async function takeNetWorthSnapshot(): Promise<void> {
 
   console.log(`[Snapshot] Taking net worth snapshot for ${today.toISOString().split('T')[0]}...`);
 
-  const existing = await prisma.netWorthSnapshot.findUnique({ where: { date: today } });
-  if (existing) {
-    console.log('[Snapshot] Snapshot already exists for today, skipping');
-    return;
-  }
-
   const accounts = await prisma.account.findMany({ where: { isActive: true } });
-
-  const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
-  const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
 
   let totalAssets = 0;
   let totalLiabilities = 0;
 
   for (const a of accounts) {
     const bal = decimalToNumber(a.balance);
-    if (ASSET_TYPES.includes(a.type)) totalAssets += bal;
-    else if (LIABILITY_TYPES.includes(a.type)) totalLiabilities += Math.abs(bal);
+    if (isAssetType(a.type)) totalAssets += bal;
+    else if (isLiabilityType(a.type)) totalLiabilities += Math.abs(bal);
+
+    const netWorth = isAssetType(a.type) ? bal : -Math.abs(bal);
+    await prisma.accountNetWorthSnapshot.upsert({
+      where: {
+        accountId_date: {
+          accountId: a.id,
+          date: today,
+        },
+      },
+      update: {
+        accountType: a.type,
+        balance: bal,
+        netWorth,
+      },
+      create: {
+        accountId: a.id,
+        date: today,
+        accountType: a.type,
+        balance: bal,
+        netWorth,
+      },
+    });
   }
 
   // Include manual assets (real estate, etc.)
@@ -141,8 +155,14 @@ export async function takeNetWorthSnapshot(): Promise<void> {
   });
   totalAssets += decimalToNumber(manualAssetTotal._sum.currentValue);
 
-  await prisma.netWorthSnapshot.create({
-    data: {
+  await prisma.netWorthSnapshot.upsert({
+    where: { date: today },
+    update: {
+      totalAssets,
+      totalLiabilities,
+      netWorth: totalAssets - totalLiabilities,
+    },
+    create: {
       date: today,
       totalAssets,
       totalLiabilities,

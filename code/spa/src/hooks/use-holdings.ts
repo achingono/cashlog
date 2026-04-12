@@ -10,6 +10,7 @@ export function useHoldings(period: string = 'all') {
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     Promise.all([
       api.getHoldings(),
       api.getHoldingsHistory(period),
@@ -17,6 +18,7 @@ export function useHoldings(period: string = 'all') {
       .then(([holdingsRes, historyRes]) => {
         setHoldings(holdingsRes.data);
         setHistory(historyRes.data);
+
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { DashboardSummary, TrendDataPoint, decimalToNumber } from '../lib/types';
 import { getTotalAssetValue } from './asset.service';
+import { buildCumulativeMonthlyPoints, deriveMonthCount, mapSnapshotsToTrendPoints, shouldUseSnapshots } from './trend-utils';
 
 const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
 const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
@@ -54,57 +55,54 @@ export async function getTrends(months?: number, accountId?: string): Promise<Tr
     ? { date: { gte: new Date(new Date().setMonth(new Date().getMonth() - months)) } }
     : undefined;
 
-  const snapshots = await prisma.netWorthSnapshot.findMany({
-    where: snapshotWhere,
-    orderBy: { date: 'asc' },
+  const snapshots = accountId
+    ? await prisma.accountNetWorthSnapshot.findMany({
+        where: { accountId, ...(snapshotWhere || {}) },
+        select: { date: true, netWorth: true },
+        orderBy: { date: 'asc' },
+      })
+    : await prisma.netWorthSnapshot.findMany({
+        where: snapshotWhere,
+        select: { date: true, netWorth: true },
+        orderBy: { date: 'asc' },
+      });
+
+  const now = new Date();
+
+  const firstTx = await prisma.transaction.findFirst({
+    where: accountId ? { accountId } : undefined,
+    orderBy: { posted: 'asc' },
+    select: { posted: true },
   });
 
-  if (snapshots.length > 0) {
-    return snapshots.map((s) => ({
-      date: s.date.toISOString().split('T')[0],
-      value: decimalToNumber(s.netWorth),
-    }));
+  const monthCount = deriveMonthCount(months, firstTx?.posted, now);
+
+  if (!firstTx && snapshots.length === 0) {
+    return [];
   }
 
-  // Fallback: generate from transaction history
-  const points: TrendDataPoint[] = [];
-  const now = new Date();
-  let monthCount = months && months > 0 ? months : 0;
+  const useSnapshots = shouldUseSnapshots(snapshots.length, months, monthCount);
 
-  if (!monthCount) {
-    const firstTx = await prisma.transaction.findFirst({
-      where: accountId ? { accountId } : undefined,
-      orderBy: { posted: 'asc' },
-      select: { posted: true },
-    });
-
-    if (!firstTx) return [];
-
-    const start = new Date(firstTx.posted.getFullYear(), firstTx.posted.getMonth(), 1);
-    monthCount = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  if (useSnapshots) {
+    return mapSnapshotsToTrendPoints(snapshots);
   }
 
-  for (let i = monthCount; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-
-    const where: any = {
-      posted: { lte: endDate },
-    };
-    if (accountId) where.accountId = accountId;
-
-    const result = await prisma.transaction.aggregate({
-      where,
-      _sum: { amount: true },
-    });
-
-    points.push({
-      date: date.toISOString().split('T')[0],
-      value: decimalToNumber(result._sum.amount),
-    });
+  // Fallback: generate from transaction history when snapshots are missing/sparse
+  if (!firstTx) {
+    return mapSnapshotsToTrendPoints(snapshots);
   }
 
-  return points;
+  const lastMonthExclusive = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      posted: { lt: lastMonthExclusive },
+      ...(accountId ? { accountId } : {}),
+    },
+    select: { posted: true, amount: true },
+    orderBy: { posted: 'asc' },
+  });
+
+  return buildCumulativeMonthlyPoints(transactions, monthCount, now);
 }
 
 export async function getSpendingByCategory(startDate?: Date, endDate?: Date, accountId?: string) {

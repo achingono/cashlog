@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { HoldingsSummary, decimalToNumber, TrendDataPoint } from '../lib/types';
 import { getTotalAssetValue } from './asset.service';
+import { buildCumulativeMonthlyPoints, deriveMonthCount, mapSnapshotsToTrendPoints, shouldUseSnapshots } from './trend-utils';
 
 const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
 const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
@@ -51,11 +52,40 @@ export async function getHoldingsHistory(months?: number): Promise<TrendDataPoin
 
   const snapshots = await prisma.netWorthSnapshot.findMany({
     where,
+    select: { date: true, netWorth: true },
     orderBy: { date: 'asc' },
   });
 
-  return snapshots.map((s) => ({
-    date: s.date.toISOString().split('T')[0],
-    value: decimalToNumber(s.netWorth),
-  }));
+  const now = new Date();
+
+  const firstTx = await prisma.transaction.findFirst({
+    orderBy: { posted: 'asc' },
+    select: { posted: true },
+  });
+
+  const monthCount = deriveMonthCount(months, firstTx?.posted, now);
+
+  if (!firstTx && snapshots.length === 0) {
+    return [];
+  }
+
+  const useSnapshots = shouldUseSnapshots(snapshots.length, months, monthCount);
+
+  if (useSnapshots) {
+    return mapSnapshotsToTrendPoints(snapshots);
+  }
+
+  // Fallback: generate from transaction history when snapshots are missing/sparse
+  if (!firstTx) {
+    return mapSnapshotsToTrendPoints(snapshots);
+  }
+
+  const lastMonthExclusive = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const transactions = await prisma.transaction.findMany({
+    where: { posted: { lt: lastMonthExclusive } },
+    select: { posted: true, amount: true },
+    orderBy: { posted: 'asc' },
+  });
+
+  return buildCumulativeMonthlyPoints(transactions, monthCount, now);
 }

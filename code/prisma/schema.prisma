@@ -27,6 +27,7 @@ model Account {
 
   transactions Transaction[]
   goalAccounts GoalAccount[]
+  netWorthSnapshots AccountNetWorthSnapshot[]
 
   @@index([type])
   @@index([isActive])
@@ -119,6 +120,22 @@ model NetWorthSnapshot {
   createdAt   DateTime @default(now())
 
   @@index([date])
+}
+
+model AccountNetWorthSnapshot {
+  id        String      @id @default(cuid())
+  accountId String
+  account   Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  date      DateTime
+  accountType AccountType
+  balance   Decimal     @db.Decimal(15, 2)
+  netWorth  Decimal     @db.Decimal(15, 2)
+  createdAt DateTime    @default(now())
+
+  @@unique([accountId, date])
+  @@index([date])
+  @@index([accountId, date])
+
 }
 
 enum AccountType {

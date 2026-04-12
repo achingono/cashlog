@@ -5,6 +5,7 @@ import { categorizeTransactions } from './jobs/categorize-transactions';
 import { generateMonthlyReport, takeNetWorthSnapshot } from './jobs/generate-reports';
 import { valuateAssets } from './jobs/valuate-assets';
 import { updateGoalProgress } from './jobs/update-goal-progress';
+import { backfillHistoricalSnapshots } from './jobs/backfill-snapshots';
 
 console.log('[Worker] Starting cron scheduler...');
 
@@ -95,6 +96,7 @@ setTimeout(async () => {
     await importTransactions();
     await backfillTransactions();
     await categorizeTransactions();
+    await backfillHistoricalSnapshots();
     await takeNetWorthSnapshot();
     await updateGoalProgress();
   } catch (err) {
@@ -109,6 +111,7 @@ console.log('  - Monthly report: 1st of month at 6AM (0 6 1 * *)');
 console.log('  - Backfill (90-day windows): every 6 hours at :30 (30 */6 * * *)');
 console.log('  - Categorize backfilled transactions: every 6 hours at :45 (45 */6 * * *)');
 console.log('  - Net worth snapshot: daily at midnight (0 0 * * *)');
+console.log('  - Snapshot backfill: one-time on startup (last 90-365 days)');
 console.log('  - Update goal progress: daily at 12:05 AM (5 0 * * *)');
 console.log('  - Valuate assets: weekly on Sundays at 3 AM (0 3 * * 0)');
 
