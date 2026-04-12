@@ -12,7 +12,7 @@ interface TransactionTableProps {
   onCategoryClick?: (transactionId: string) => void;
 }
 
-export function TransactionTable({ transactions, pagination, onPageChange, onCategoryClick }: TransactionTableProps) {
+export function TransactionTable({ transactions, pagination, onPageChange, onCategoryClick }: Readonly<TransactionTableProps>) {
   if (transactions.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -57,7 +57,7 @@ export function TransactionTable({ transactions, pagination, onPageChange, onCat
 
       <div className="flex items-center justify-between mt-4 px-2">
         <p className="text-sm text-muted-foreground">
-          {pagination.total} transaction{pagination.total !== 1 ? 's' : ''}
+          {pagination.total} transaction{pagination.total === 1 ? '' : 's'}
         </p>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => onPageChange(pagination.page - 1)}>

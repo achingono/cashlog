@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatPercent, formatDate } from "@/lib/formatters";
-import type { Goal, GoalStatus } from "@/types";
+import type { Goal } from "@/types";
 import { GOAL_STATUS_LABELS } from "@/types";
 
 interface GoalDetailProps {
@@ -15,7 +15,7 @@ interface GoalDetailProps {
   onDelete: (id: string) => void;
 }
 
-export function GoalDetail({ goal, open, onClose, onStatusChange, onDelete }: GoalDetailProps) {
+export function GoalDetail({ goal, open, onClose, onStatusChange, onDelete }: Readonly<GoalDetailProps>) {
   if (!goal) return null;
 
   const isComplete = goal.percentComplete >= 100;
@@ -34,7 +34,7 @@ export function GoalDetail({ goal, open, onClose, onStatusChange, onDelete }: Go
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Progress</span>
-              <Badge variant="secondary">{GOAL_STATUS_LABELS[goal.status as GoalStatus]}</Badge>
+              <Badge variant="secondary">{GOAL_STATUS_LABELS[goal.status]}</Badge>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold">{formatPercent(goal.percentComplete)}</p>

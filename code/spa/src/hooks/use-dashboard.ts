@@ -4,7 +4,7 @@ import type { DashboardSummary, TrendDataPoint, SpendingByCategory, Budget, Goal
 
 function periodToStartDate(period: string): string | undefined {
   if (period === 'all') return undefined;
-  const months = parseInt(period, 10);
+  const months = Number.parseInt(period, 10);
   if (months <= 0 || Number.isNaN(months)) return undefined;
   const date = new Date();
   date.setMonth(date.getMonth() - months);

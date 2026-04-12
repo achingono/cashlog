@@ -7,7 +7,7 @@ interface GoalProgressProps {
   goals: Goal[];
 }
 
-export function GoalProgress({ goals }: GoalProgressProps) {
+export function GoalProgress({ goals }: Readonly<GoalProgressProps>) {
   const activeGoals = goals.filter(g => g.status === 'ACTIVE');
 
   if (activeGoals.length === 0) {

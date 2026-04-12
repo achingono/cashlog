@@ -14,7 +14,7 @@ interface AccountSummaryCardProps {
   className?: string;
 }
 
-export function AccountSummaryCard({ title, amount, icon = "Landmark", description, className }: AccountSummaryCardProps) {
+export function AccountSummaryCard({ title, amount, icon = "Landmark", description, className }: Readonly<AccountSummaryCardProps>) {
   const Icon = icons[icon] || Landmark;
 
   return (

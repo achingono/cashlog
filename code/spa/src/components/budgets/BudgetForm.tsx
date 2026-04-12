@@ -25,7 +25,7 @@ interface BudgetFormProps {
   budget?: Budget | null;
 }
 
-export function BudgetForm({ open, onClose, onSubmit, budget }: BudgetFormProps) {
+export function BudgetForm({ open, onClose, onSubmit, budget }: Readonly<BudgetFormProps>) {
   const [categories, setCategories] = useState<Category[]>([]);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<BudgetFormValues>({
@@ -42,6 +42,12 @@ export function BudgetForm({ open, onClose, onSubmit, budget }: BudgetFormProps)
   });
 
   const period = watch('period');
+  let submitLabel = 'Create';
+  if (isSubmitting) {
+    submitLabel = 'Saving...';
+  } else if (budget) {
+    submitLabel = 'Update';
+  }
 
   useEffect(() => {
     if (open) {
@@ -135,9 +141,9 @@ export function BudgetForm({ open, onClose, onSubmit, budget }: BudgetFormProps)
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : (budget ? 'Update' : 'Create')}
-            </Button>
+             <Button type="submit" disabled={isSubmitting}>
+               {submitLabel}
+             </Button>
           </DialogFooter>
         </form>
       </DialogContent>

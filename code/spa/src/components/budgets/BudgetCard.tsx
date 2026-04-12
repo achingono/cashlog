@@ -18,9 +18,15 @@ const PERIOD_LABELS: Record<string, string> = {
   YEARLY: 'Yearly',
 };
 
-export function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
+export function BudgetCard({ budget, onEdit, onDelete }: Readonly<BudgetCardProps>) {
   const isOver = budget.percentUsed > 100;
   const isWarning = budget.percentUsed > 80 && budget.percentUsed <= 100;
+  let progressClassName = '';
+  if (isOver) {
+    progressClassName = '[&>div]:bg-red-500';
+  } else if (isWarning) {
+    progressClassName = '[&>div]:bg-yellow-500';
+  }
 
   return (
     <Card>
@@ -48,7 +54,7 @@ export function BudgetCard({ budget, onEdit, onDelete }: BudgetCardProps) {
           </div>
           <Progress
             value={Math.min(budget.percentUsed, 100)}
-            className={`h-2.5 ${isOver ? '[&>div]:bg-red-500' : isWarning ? '[&>div]:bg-yellow-500' : ''}`}
+            className={`h-2.5 ${progressClassName}`}
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{formatPercent(budget.percentUsed)} used</span>

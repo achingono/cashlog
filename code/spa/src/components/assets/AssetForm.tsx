@@ -38,7 +38,7 @@ interface AssetFormProps {
   asset?: Asset | null;
 }
 
-export function AssetForm({ open, onClose, onSubmit, asset }: AssetFormProps) {
+export function AssetForm({ open, onClose, onSubmit, asset }: Readonly<AssetFormProps>) {
   const { register, handleSubmit, reset, control, watch, formState: { errors, isSubmitting } } = useForm<AssetFormValues>({
     resolver: zodResolver(assetSchema),
     defaultValues: asset ? {
@@ -68,6 +68,12 @@ export function AssetForm({ open, onClose, onSubmit, asset }: AssetFormProps) {
   });
 
   const selectedType = watch('type') as AssetType;
+  let submitLabel = 'Create';
+  if (isSubmitting) {
+    submitLabel = 'Saving...';
+  } else if (asset) {
+    submitLabel = 'Update';
+  }
 
   const handleFormSubmit = async (values: AssetFormValues) => {
     const {
@@ -242,9 +248,9 @@ export function AssetForm({ open, onClose, onSubmit, asset }: AssetFormProps) {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : (asset ? 'Update' : 'Create')}
-            </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {submitLabel}
+              </Button>
           </DialogFooter>
         </form>
       </DialogContent>

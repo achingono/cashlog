@@ -16,7 +16,7 @@ const STATUS_COLORS: Record<GoalStatus, string> = {
   CANCELLED: 'bg-gray-100 text-gray-800',
 };
 
-export function GoalCard({ goal, onClick }: GoalCardProps) {
+export function GoalCard({ goal, onClick }: Readonly<GoalCardProps>) {
   const isComplete = goal.percentComplete >= 100;
 
   return (

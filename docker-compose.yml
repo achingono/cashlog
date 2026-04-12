@@ -70,5 +70,50 @@ services:
     volumes:
       - ./.config/simplefin-cli:/root/.simplefin-cli
 
+  sonarqube:
+    image: sonarqube:community
+    restart: unless-stopped
+    profiles: ["sonar"]
+    ports:
+      - "${SONAR_PORT:-9000}:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
+
+  sonarqube-scan:
+    image: sonarsource/sonar-scanner-cli:latest
+    restart: "no"
+    profiles: ["sonar"]
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+    environment:
+      SONAR_HOST_URL: ${SONAR_HOST_URL:-http://sonarqube:9000}
+      SONAR_PROJECT_KEY: ${SONAR_PROJECT_KEY:-achingono_money}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    volumes:
+      - ./:/usr/src
+    working_dir: /usr/src
+    entrypoint: ["/bin/sh", "-lc"]
+    command: >
+      "if [ -z \"${SONAR_TOKEN}\" ]; then echo 'SONAR_TOKEN is required for sonarqube-scan container' >&2; exit 1; fi;
+      sonar-scanner
+      -Dsonar.projectKey=${SONAR_PROJECT_KEY}
+      -Dsonar.host.url=${SONAR_HOST_URL}
+      -Dsonar.token=${SONAR_TOKEN}
+      -Dsonar.qualitygate.wait=true"
+
 volumes:
   pgdata:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:

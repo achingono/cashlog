@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/formatters";
-import { ACCOUNT_TYPE_LABELS, ASSET_TYPES, LIABILITY_TYPES, type AccountType } from "@/types";
+import { ACCOUNT_TYPE_LABELS, ASSET_TYPES, LIABILITY_TYPES } from "@/types";
+
+const SUMMARY_SKELETON_KEYS = ['holdings-summary-1', 'holdings-summary-2', 'holdings-summary-3'] as const;
 
 export function HoldingsPage() {
   const [period, setPeriod] = useState("all");
@@ -25,14 +27,14 @@ export function HoldingsPage() {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Holdings</h2>
-        <div className="grid gap-4 md:grid-cols-3">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}</div>
+        <div className="grid gap-4 md:grid-cols-3">{SUMMARY_SKELETON_KEYS.map((key) => <Skeleton key={key} className="h-[120px] rounded-xl" />)}</div>
         <Skeleton className="h-[400px] rounded-xl" />
       </div>
     );
   }
 
-  const assets = holdings.accounts.filter(a => ASSET_TYPES.includes(a.type as AccountType));
-  const liabilities = holdings.accounts.filter(a => LIABILITY_TYPES.includes(a.type as AccountType));
+  const assets = holdings.accounts.filter(a => ASSET_TYPES.includes(a.type));
+  const liabilities = holdings.accounts.filter(a => LIABILITY_TYPES.includes(a.type));
 
   return (
     <div className="space-y-6">
@@ -88,7 +90,7 @@ export function HoldingsPage() {
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedAccountId(a.id)}>
                     <TableCell className="font-medium">{a.name}</TableCell>
                     <TableCell className="text-muted-foreground">{a.institution || '—'}</TableCell>
-                    <TableCell><Badge variant="outline">{ACCOUNT_TYPE_LABELS[a.type as AccountType]}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{ACCOUNT_TYPE_LABELS[a.type]}</Badge></TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(a.balance)}</TableCell>
                   </TableRow>
                 ))}
@@ -119,7 +121,7 @@ export function HoldingsPage() {
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedAccountId(a.id)}>
                     <TableCell className="font-medium">{a.name}</TableCell>
                     <TableCell className="text-muted-foreground">{a.institution || '—'}</TableCell>
-                    <TableCell><Badge variant="outline">{ACCOUNT_TYPE_LABELS[a.type as AccountType]}</Badge></TableCell>
+                    <TableCell><Badge variant="outline">{ACCOUNT_TYPE_LABELS[a.type]}</Badge></TableCell>
                     <TableCell className="text-right font-medium text-red-600">{formatCurrency(Math.abs(a.balance))}</TableCell>
                   </TableRow>
                 ))}

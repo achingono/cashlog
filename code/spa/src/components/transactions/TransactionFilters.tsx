@@ -18,7 +18,7 @@ interface TransactionFiltersProps {
   onFilterChange: (updates: Record<string, string | undefined>) => void;
 }
 
-export function TransactionFilters({ accounts, categories, filters, onFilterChange }: TransactionFiltersProps) {
+export function TransactionFilters({ accounts, categories, filters, onFilterChange }: Readonly<TransactionFiltersProps>) {
   const hasFilters = filters.accountId || filters.categoryId || filters.search || filters.startDate;
 
   return (

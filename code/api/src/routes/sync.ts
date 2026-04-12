@@ -14,7 +14,7 @@ router.get('/status', async (_req, res, next) => {
 
 router.get('/history', async (req, res, next) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = Number.parseInt(req.query.limit as string, 10) || 10;
     const history = await getSyncHistory(limit);
     res.json({ data: history });
   } catch (err) {

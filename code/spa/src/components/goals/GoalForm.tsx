@@ -27,7 +27,7 @@ interface GoalFormProps {
   goal?: Goal | null;
 }
 
-export function GoalForm({ open, onClose, onSubmit, goal }: GoalFormProps) {
+export function GoalForm({ open, onClose, onSubmit, goal }: Readonly<GoalFormProps>) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
@@ -45,6 +45,12 @@ export function GoalForm({ open, onClose, onSubmit, goal }: GoalFormProps) {
       notes: '',
     },
   });
+  let submitLabel = 'Create';
+  if (isSubmitting) {
+    submitLabel = 'Saving...';
+  } else if (goal) {
+    submitLabel = 'Update';
+  }
 
   useEffect(() => {
     if (open) {
@@ -154,7 +160,7 @@ export function GoalForm({ open, onClose, onSubmit, goal }: GoalFormProps) {
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { reset(); setSelectedAccountIds([]); onClose(); }}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : (goal ? 'Update' : 'Create')}
+              {submitLabel}
             </Button>
           </DialogFooter>
         </form>

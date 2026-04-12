@@ -15,7 +15,7 @@ router.get('/', async (_req, res, next) => {
 router.get('/history', async (req, res, next) => {
   try {
     const periodParam = req.query.period as string | undefined;
-    const months = periodParam && periodParam !== 'all' ? parseInt(periodParam) || 12 : undefined;
+    const months = periodParam && periodParam !== 'all' ? Number.parseInt(periodParam, 10) || 12 : undefined;
     const history = await getHoldingsHistory(months);
     res.json({ data: history });
   } catch (err) {

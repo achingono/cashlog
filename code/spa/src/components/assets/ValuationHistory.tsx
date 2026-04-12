@@ -12,7 +12,7 @@ const chartConfig: ChartConfig = {
   value: { label: "Value", color: "hsl(var(--chart-1))" },
 };
 
-export function ValuationHistory({ valuations }: ValuationHistoryProps) {
+export function ValuationHistory({ valuations }: Readonly<ValuationHistoryProps>) {
   if (valuations.length === 0) {
     return (
       <Card>

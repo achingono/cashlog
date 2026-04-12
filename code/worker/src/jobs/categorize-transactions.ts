@@ -4,6 +4,100 @@ import { buildCategorizationPrompt } from '../prompts/categorize';
 
 const BATCH_SIZE = 30;
 
+type Assignment = {
+  transactionId?: string;
+  categoryId?: string;
+  categoryName?: string;
+};
+
+function parseAssignments(content: string): Assignment[] {
+  const parsed = JSON.parse(content);
+  if (Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return [];
+  }
+
+  if (Array.isArray(parsed.assignments)) {
+    return parsed.assignments;
+  }
+
+  if (Array.isArray(parsed.results)) {
+    return parsed.results;
+  }
+
+  if (parsed.transactionId && (parsed.categoryId || parsed.categoryName)) {
+    return [parsed];
+  }
+
+  return [];
+}
+
+function resolveCategoryId(
+  assignment: Assignment,
+  validCategoryIds: Set<string>,
+  categoryIdByName: Map<string, string>
+): string | undefined {
+  if (assignment.categoryId && validCategoryIds.has(assignment.categoryId)) {
+    return assignment.categoryId;
+  }
+
+  if (!assignment.categoryName) {
+    return undefined;
+  }
+
+  return categoryIdByName.get(assignment.categoryName.trim().toLowerCase());
+}
+
+function getTemperature(): number {
+  if (!process.env.AZURE_OPENAI_TEMPERATURE) {
+    return 1;
+  }
+  return Number(process.env.AZURE_OPENAI_TEMPERATURE);
+}
+
+async function categorizeBatch(
+  assignments: Assignment[],
+  validCategoryIds: Set<string>,
+  categoryIdByName: Map<string, string>
+): Promise<number> {
+  let categorized = 0;
+  for (const assignment of assignments) {
+    if (!assignment.transactionId) continue;
+
+    const resolvedCategoryId = resolveCategoryId(
+      assignment,
+      validCategoryIds,
+      categoryIdByName
+    );
+    if (!resolvedCategoryId) continue;
+
+    await prisma.transaction
+      .update({
+        where: { id: assignment.transactionId },
+        data: { categoryId: resolvedCategoryId },
+      })
+      .catch(() => {
+        // Skip if transaction not found
+      });
+
+    categorized++;
+  }
+  return categorized;
+}
+
+function logBatchError(err: unknown, batchNumber: number): void {
+  if ((err as { code?: string }).code === 'DeploymentNotFound') {
+    console.error(
+      `[Categorize] Azure deployment not found: "${process.env.AZURE_OPENAI_DEPLOYMENT}". ` +
+        'Set AZURE_OPENAI_DEPLOYMENT to your exact Azure deployment name.'
+    );
+  }
+  console.error(`[Categorize] Batch ${batchNumber} failed:`, err);
+}
+
 export async function categorizeTransactions(): Promise<number> {
   console.log('[Categorize] Starting transaction categorization...');
   const missingConfig = getMissingAzureOpenAIConfig();
@@ -57,54 +151,19 @@ export async function categorizeTransactions(): Promise<number> {
       const response = await openai.chat.completions.create({
         model: process.env.AZURE_OPENAI_DEPLOYMENT!,
         messages: [{ role: 'user', content: prompt }],
-        temperature: process.env.AZURE_OPENAI_TEMPERATURE ? Number(process.env.AZURE_OPENAI_TEMPERATURE) : 1,
+        temperature: getTemperature(),
         response_format: { type: 'json_object' },
       });
 
       const content = response.choices[0]?.message?.content;
       if (!content) continue;
 
-      type Assignment = { transactionId?: string; categoryId?: string; categoryName?: string };
-      let assignments: Assignment[] = [];
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) {
-        assignments = parsed;
-      } else if (parsed && typeof parsed === 'object') {
-        if (Array.isArray(parsed.assignments)) assignments = parsed.assignments;
-        else if (Array.isArray(parsed.results)) assignments = parsed.results;
-        else if (parsed.transactionId && (parsed.categoryId || parsed.categoryName)) assignments = [parsed];
-      }
-
-      for (const assignment of assignments) {
-        if (!assignment.transactionId) continue;
-
-        let resolvedCategoryId: string | undefined;
-        if (assignment.categoryId && validCategoryIds.has(assignment.categoryId)) {
-          resolvedCategoryId = assignment.categoryId;
-        } else if (assignment.categoryName) {
-          resolvedCategoryId = categoryIdByName.get(assignment.categoryName.trim().toLowerCase());
-        }
-
-        if (!resolvedCategoryId) continue;
-
-        await prisma.transaction.update({
-          where: { id: assignment.transactionId },
-          data: { categoryId: resolvedCategoryId },
-        }).catch(() => {
-          // Skip if transaction not found
-        });
-        categorized++;
-      }
+      const assignments = parseAssignments(content);
+      categorized += await categorizeBatch(assignments, validCategoryIds, categoryIdByName);
 
       console.log(`[Categorize] Batch ${Math.floor(i / BATCH_SIZE) + 1}: categorized ${assignments.length} transactions`);
     } catch (err) {
-      if ((err as { code?: string }).code === 'DeploymentNotFound') {
-        console.error(
-          `[Categorize] Azure deployment not found: "${process.env.AZURE_OPENAI_DEPLOYMENT}". ` +
-          'Set AZURE_OPENAI_DEPLOYMENT to your exact Azure deployment name.'
-        );
-      }
-      console.error(`[Categorize] Batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, err);
+      logBatchError(err, Math.floor(i / BATCH_SIZE) + 1);
     }
   }
 

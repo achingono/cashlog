@@ -10,6 +10,9 @@ import { PiggyBank, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { Budget } from "@/types";
 
+const SUMMARY_SKELETON_KEYS = ['budget-summary-1', 'budget-summary-2', 'budget-summary-3'] as const;
+const CARD_SKELETON_KEYS = ['budget-card-1', 'budget-card-2', 'budget-card-3', 'budget-card-4'] as const;
+
 export function BudgetsPage() {
   const { budgets, loading, error, createBudget, updateBudget, deleteBudget } = useBudgets();
   const [formOpen, setFormOpen] = useState(false);
@@ -24,10 +27,10 @@ export function BudgetsPage() {
       <div className="space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Budgets</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}
+          {SUMMARY_SKELETON_KEYS.map((key) => <Skeleton key={key} className="h-[120px] rounded-xl" />)}
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[140px] rounded-xl" />)}
+          {CARD_SKELETON_KEYS.map((key) => <Skeleton key={key} className="h-[140px] rounded-xl" />)}
         </div>
       </div>
     );
@@ -83,7 +86,7 @@ export function BudgetsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalBudgeted)}</div>
-            <p className="text-xs text-muted-foreground mt-1">{budgets.length} budget{budgets.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-muted-foreground mt-1">{budgets.length} budget{budgets.length === 1 ? '' : 's'}</p>
           </CardContent>
         </Card>
         <Card>

@@ -7,7 +7,7 @@ interface NetWorthCardProps {
   summary: DashboardSummary;
 }
 
-export function NetWorthCard({ summary }: NetWorthCardProps) {
+export function NetWorthCard({ summary }: Readonly<NetWorthCardProps>) {
   const isPositiveNet = summary.monthlyNet >= 0;
 
   return (

@@ -3,8 +3,8 @@ import { HoldingsSummary, decimalToNumber, TrendDataPoint } from '../lib/types';
 import { getTotalAssetValue } from './asset.service';
 import { buildCumulativeMonthlyPoints, deriveMonthCount, mapSnapshotsToTrendPoints, shouldUseSnapshots } from './trend-utils';
 
-const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
-const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
+const ASSET_TYPES = new Set(['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER']);
+const LIABILITY_TYPES = new Set(['CREDIT_CARD', 'LOAN', 'MORTGAGE']);
 
 export async function getHoldings(): Promise<HoldingsSummary> {
   const [accounts, manualAssetValue] = await Promise.all([
@@ -21,8 +21,8 @@ export async function getHoldings(): Promise<HoldingsSummary> {
 
   const accountList = accounts.map((a) => {
     const bal = decimalToNumber(a.balance);
-    if (ASSET_TYPES.includes(a.type)) totalAssets += bal;
-    else if (LIABILITY_TYPES.includes(a.type)) totalLiabilities += Math.abs(bal);
+    if (ASSET_TYPES.has(a.type)) totalAssets += bal;
+    else if (LIABILITY_TYPES.has(a.type)) totalLiabilities += Math.abs(bal);
 
     return {
       id: a.id,

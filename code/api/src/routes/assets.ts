@@ -42,7 +42,7 @@ router.get('/', async (_req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const id = req.params.id as string;
+    const id = req.params.id;
     const asset = await getAssetById(id);
     if (!asset) throw new AppError(404, 'Asset not found', 'NOT_FOUND');
     res.json({ data: asset });
@@ -62,7 +62,8 @@ router.post('/', validate(createAssetSchema, 'body'), async (req, res, next) => 
 
 router.put('/:id', validate(updateAssetSchema, 'body'), async (req, res, next) => {
   try {
-    const asset = await updateAsset(req.params.id as string, req.body);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const asset = await updateAsset(id, req.body);
     res.json({ data: asset });
   } catch (err) {
     next(err);
@@ -71,7 +72,8 @@ router.put('/:id', validate(updateAssetSchema, 'body'), async (req, res, next) =
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    await deleteAsset(req.params.id as string);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await deleteAsset(id);
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -80,7 +82,7 @@ router.delete('/:id', async (req, res, next) => {
 
 router.post('/:id/valuations', validate(addValuationSchema, 'body'), async (req, res, next) => {
   try {
-    const id = req.params.id as string;
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const asset = await getAssetById(id);
     if (!asset) throw new AppError(404, 'Asset not found', 'NOT_FOUND');
     const valuation = await addValuation(id, req.body);

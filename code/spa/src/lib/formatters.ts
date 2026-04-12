@@ -38,7 +38,7 @@ export function formatPercent(value: number): string {
 
 export function formatChange(current: number, previous: number): { value: string; isPositive: boolean; percent: string } {
   const change = current - previous;
-  const percent = previous !== 0 ? (change / Math.abs(previous)) * 100 : 0;
+  const percent = previous === 0 ? 0 : (change / Math.abs(previous)) * 100;
   return {
     value: formatCurrency(Math.abs(change)),
     isPositive: change >= 0,
@@ -58,7 +58,7 @@ export function getAccountTypeIcon(type: string): string {
   }
 }
 
-export function getCategoryColor(color: string | null): string {
+export function getCategoryColor(color = 'gray'): string {
   const colorMap: Record<string, string> = {
     emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300',
     blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
@@ -72,6 +72,5 @@ export function getCategoryColor(color: string | null): string {
     cyan: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300',
     gray: 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300',
   };
-  const key = color ?? 'gray';
-  return colorMap[key] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300';
+  return colorMap[color] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300';
 }

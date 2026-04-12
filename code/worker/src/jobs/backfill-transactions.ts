@@ -53,7 +53,7 @@ export async function backfillTransactions(): Promise<void> {
       await prisma.transaction.upsert({
         where: { externalId: tx.id },
         update: {
-          amount: parseFloat(tx.amount),
+          amount: Number.parseFloat(tx.amount),
           description: tx.description,
           payee: tx.payee || null,
           memo: tx.memo || null,
@@ -62,7 +62,7 @@ export async function backfillTransactions(): Promise<void> {
           externalId: tx.id,
           accountId: account.id,
           posted: new Date(tx.posted * 1000),
-          amount: parseFloat(tx.amount),
+          amount: Number.parseFloat(tx.amount),
           description: tx.description,
           payee: tx.payee || null,
           memo: tx.memo || null,

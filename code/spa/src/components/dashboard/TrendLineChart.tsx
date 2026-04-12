@@ -16,7 +16,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function TrendLineChart({ data, title = "Net Worth Trend", description = "Your net worth over time" }: TrendLineChartProps) {
+export function TrendLineChart({ data, title = "Net Worth Trend", description = "Your net worth over time" }: Readonly<TrendLineChartProps>) {
   return (
     <Card>
       <CardHeader>

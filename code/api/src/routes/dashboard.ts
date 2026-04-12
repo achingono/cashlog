@@ -16,7 +16,7 @@ router.get('/summary', async (req, res, next) => {
 router.get('/trends', async (req, res, next) => {
   try {
     const periodParam = req.query.period as string | undefined;
-    const months = periodParam && periodParam !== 'all' ? parseInt(periodParam) || 6 : undefined;
+    const months = periodParam && periodParam !== 'all' ? Number.parseInt(periodParam, 10) || 6 : undefined;
     const accountId = req.query.accountId as string | undefined;
     const trends = await getTrends(months, accountId);
     res.json({ data: trends });

@@ -15,19 +15,20 @@ interface ValuationPromptInput {
 }
 
 export function buildValuationPrompt(input: ValuationPromptInput): string {
-  const details: string[] = [];
-  details.push(`Asset Type: ${input.type}`);
-  details.push(`Name: ${input.name}`);
-  if (input.address) details.push(`Address: ${input.address}`);
-  details.push(`Purchase Price: $${input.purchasePrice.toLocaleString()}`);
-  if (input.purchaseDate) details.push(`Purchase Date: ${input.purchaseDate}`);
+  const details: string[] = [
+    `Asset Type: ${input.type}`,
+    `Name: ${input.name}`,
+    `Purchase Price: $${input.purchasePrice.toLocaleString()}`,
+    ...(input.address ? [`Address: ${input.address}`] : []),
+    ...(input.purchaseDate ? [`Purchase Date: ${input.purchaseDate}`] : []),
+  ];
 
   if (input.metadata) {
-    for (const [key, value] of Object.entries(input.metadata)) {
-      if (value !== null && value !== undefined && value !== '') {
-        details.push(`${key}: ${String(value)}`);
-      }
-    }
+    details.push(
+      ...Object.entries(input.metadata)
+        .filter(([, value]) => value !== null && value !== undefined && value !== '')
+        .map(([key, value]) => `${key}: ${String(value)}`)
+    );
   }
 
   return `You are a financial asset valuation assistant. Based on the asset details below and current market conditions, provide an estimated current market value.

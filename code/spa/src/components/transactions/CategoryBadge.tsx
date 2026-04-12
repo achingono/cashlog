@@ -7,7 +7,7 @@ interface CategoryBadgeProps {
   onClick?: () => void;
 }
 
-export function CategoryBadge({ category, onClick }: CategoryBadgeProps) {
+export function CategoryBadge({ category, onClick }: Readonly<CategoryBadgeProps>) {
   if (!category) {
     return (
       <Badge
@@ -21,8 +21,8 @@ export function CategoryBadge({ category, onClick }: CategoryBadgeProps) {
   }
 
   return (
-    <Badge
-      className={`cursor-pointer ${getCategoryColor(category.color)}`}
+      <Badge
+      className={`cursor-pointer ${getCategoryColor(category.color ?? undefined)}`}
       variant="secondary"
       onClick={onClick}
     >

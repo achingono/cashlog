@@ -322,6 +322,7 @@ Additional documentation is available in the [`docs/`](./docs/) directory:
 - [Configuration](./docs/configuration.md)
 - [Development Guide](./docs/development.md)
 - [Deployment Guide](./docs/deployment.md)
+- [SonarQube Scanning](./docs/sonarqube-scanning.md)
 - [Worker Jobs](./docs/worker-jobs.md)
 
 ---

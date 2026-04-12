@@ -14,7 +14,7 @@ import goalRoutes from './routes/goals';
 import { seedDefaultCategoriesOnStartup } from './lib/seed-categories';
 
 const app = express();
-const PORT = parseInt(process.env.API_PORT || '3000', 10);
+const PORT = Number.parseInt(process.env.API_PORT || '3000', 10);
 
 // Middleware
 app.use(cors());

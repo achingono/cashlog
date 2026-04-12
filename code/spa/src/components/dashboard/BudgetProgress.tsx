@@ -7,7 +7,7 @@ interface BudgetProgressProps {
   budgets: Budget[];
 }
 
-export function BudgetProgress({ budgets }: BudgetProgressProps) {
+export function BudgetProgress({ budgets }: Readonly<BudgetProgressProps>) {
   if (budgets.length === 0) {
     return (
       <Card>

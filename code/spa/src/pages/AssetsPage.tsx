@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { ASSET_TYPE_LABELS, type AssetType } from "@/types";
+import { ASSET_TYPE_LABELS } from "@/types";
 import { Building, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+const LOADING_SUMMARY_KEYS = ['asset-loading-1', 'asset-loading-2', 'asset-loading-3'] as const;
 
 export function AssetsPage() {
   const { assets, loading, error, createAsset, deleteAsset } = useAssets();
@@ -26,7 +28,7 @@ export function AssetsPage() {
       <div className="space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Assets</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}
+          {LOADING_SUMMARY_KEYS.map((key) => <Skeleton key={key} className="h-[120px] rounded-xl" />)}
         </div>
         <Skeleton className="h-[300px] rounded-xl" />
       </div>
@@ -73,7 +75,7 @@ export function AssetsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">{assets.length} asset{assets.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-muted-foreground mt-1">{assets.length} asset{assets.length === 1 ? '' : 's'}</p>
           </CardContent>
         </Card>
         <Card>
@@ -111,7 +113,7 @@ export function AssetsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Tracked Assets</CardTitle>
-            <CardDescription>{assets.length} asset{assets.length !== 1 ? 's' : ''} tracked</CardDescription>
+             <CardDescription>{assets.length} asset{assets.length === 1 ? '' : 's'} tracked</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -132,7 +134,7 @@ export function AssetsPage() {
                   return (
                     <TableRow key={asset.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedAssetId(asset.id)}>
                       <TableCell className="font-medium">{asset.name}</TableCell>
-                      <TableCell><Badge variant="outline">{ASSET_TYPE_LABELS[asset.type as AssetType]}</Badge></TableCell>
+                      <TableCell><Badge variant="outline">{ASSET_TYPE_LABELS[asset.type]}</Badge></TableCell>
                       <TableCell className="text-muted-foreground">{asset.address || '—'}</TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(asset.currentValue)}</TableCell>
                       <TableCell className={`text-right font-medium ${gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>

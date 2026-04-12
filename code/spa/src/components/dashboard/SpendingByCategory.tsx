@@ -19,7 +19,7 @@ const COLORS = [
   "hsl(160, 60%, 45%)",
 ];
 
-export function SpendingByCategory({ data }: SpendingByCategoryProps) {
+export function SpendingByCategory({ data }: Readonly<SpendingByCategoryProps>) {
   const top = data.slice(0, 8);
   const total = top.reduce((sum, item) => sum + item.total, 0);
 
@@ -63,8 +63,8 @@ export function SpendingByCategory({ data }: SpendingByCategoryProps) {
               outerRadius={100}
               paddingAngle={2}
             >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
+              {chartData.map((entry) => (
+                <Cell key={entry.name} fill={entry.fill} />
               ))}
             </Pie>
           </PieChart>

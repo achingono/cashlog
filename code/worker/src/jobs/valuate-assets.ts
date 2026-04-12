@@ -105,7 +105,7 @@ async function tryAiValuation(asset: any): Promise<number | null> {
       address: asset.address,
       purchasePrice: decimalToNumber(asset.purchasePrice),
       purchaseDate: asset.purchaseDate?.toISOString().split('T')[0],
-      metadata: asset.metadata as any,
+      metadata: asset.metadata,
     });
 
     const response = await openai.chat.completions.create({

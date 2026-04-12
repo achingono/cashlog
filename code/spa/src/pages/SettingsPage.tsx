@@ -13,7 +13,6 @@ export function SettingsPage() {
   const [syncHistory, setSyncHistory] = useState<SyncStatus[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [syncing, setSyncing] = useState(false);
-  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([api.getSyncStatus(), api.getSyncHistory(), api.getCategories()])
@@ -22,8 +21,7 @@ export function SettingsPage() {
         setSyncHistory(h.data);
         setCategories(c.data);
       })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .catch(console.error);
   }, []);
 
   const handleSync = async () => {
@@ -44,6 +42,12 @@ export function SettingsPage() {
       case 'RUNNING': return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
+  };
+
+  const statusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' => {
+    if (status === 'SUCCESS') return 'default';
+    if (status === 'FAILED') return 'destructive';
+    return 'secondary';
   };
 
   return (
@@ -74,7 +78,7 @@ export function SettingsPage() {
                   {syncStatus.errorMessage && <span className="text-red-500"> · {syncStatus.errorMessage}</span>}
                 </p>
               </div>
-              <Badge variant={syncStatus.status === 'SUCCESS' ? 'default' : syncStatus.status === 'FAILED' ? 'destructive' : 'secondary'} className="ml-auto">
+              <Badge variant={statusBadgeVariant(syncStatus.status)} className="ml-auto">
                 {syncStatus.status}
               </Badge>
             </div>

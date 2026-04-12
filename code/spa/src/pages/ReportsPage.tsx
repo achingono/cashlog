@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/formatters";
 import type { Report } from "@/types";
 
+const LOADING_CARD_KEYS = ['report-loading-1', 'report-loading-2', 'report-loading-3', 'report-loading-4'] as const;
+
 export function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,10 +24,10 @@ export function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
-        <div className="grid gap-4 md:grid-cols-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[200px] rounded-xl" />)}</div>
-      </div>
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
+        <div className="grid gap-4 md:grid-cols-2">{LOADING_CARD_KEYS.map((key) => <Skeleton key={key} className="h-[200px] rounded-xl" />)}</div>
+        </div>
     );
   }
 
@@ -42,7 +44,7 @@ export function ReportsPage() {
           <Card className="md:col-span-2">
             <CardHeader><CardTitle className="flex items-center gap-2"><Star className="h-5 w-5 text-amber-500" /> Highlights</CardTitle></CardHeader>
             <CardContent>
-              <ul className="space-y-2">{c.highlights.map((h, i) => <li key={i} className="flex items-start gap-2 text-sm"><span className="text-primary mt-1">•</span>{h}</li>)}</ul>
+              <ul className="space-y-2">{c.highlights.map((h) => <li key={h} className="flex items-start gap-2 text-sm"><span className="text-primary mt-1">•</span>{h}</li>)}</ul>
             </CardContent>
           </Card>
           <Card>
@@ -63,7 +65,7 @@ export function ReportsPage() {
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Lightbulb className="h-5 w-5 text-amber-500" /> Recommendations</CardTitle></CardHeader>
           <CardContent>
-            <ul className="space-y-2">{c.recommendations.map((r, i) => <li key={i} className="flex items-start gap-2 text-sm"><Badge variant="outline" className="mt-0.5 shrink-0">{i + 1}</Badge>{r}</li>)}</ul>
+            <ul className="space-y-2">{c.recommendations.map((r, i) => <li key={r} className="flex items-start gap-2 text-sm"><Badge variant="outline" className="mt-0.5 shrink-0">{i + 1}</Badge>{r}</li>)}</ul>
           </CardContent>
         </Card>
       </div>
@@ -87,7 +89,7 @@ export function ReportsPage() {
                 <CardDescription>{formatDate(report.generatedAt)} · {report.period}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-1">{report.content.highlights.slice(0, 3).map((h, i) => <li key={i} className="text-sm text-muted-foreground">• {h}</li>)}</ul>
+                <ul className="space-y-1">{report.content.highlights.slice(0, 3).map((h) => <li key={h} className="text-sm text-muted-foreground">• {h}</li>)}</ul>
               </CardContent>
             </Card>
           ))}

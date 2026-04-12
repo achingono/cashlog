@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import type { Account, TransactionFilterCategory } from "@/types";
 
+const LOADING_ROW_KEYS = ['tx-loading-1', 'tx-loading-2', 'tx-loading-3', 'tx-loading-4', 'tx-loading-5', 'tx-loading-6', 'tx-loading-7', 'tx-loading-8'] as const;
+
 export function TransactionsPage() {
   const { transactions, pagination, loading, filters, updateFilters, setPage } = useTransactions();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -52,7 +54,7 @@ export function TransactionsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="p-6 space-y-3">
-              {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-12 rounded" />)}
+              {LOADING_ROW_KEYS.map((key) => <Skeleton key={key} className="h-12 rounded" />)}
             </div>
           ) : (
             <TransactionTable

@@ -1,9 +1,9 @@
 import prisma from '../lib/prisma';
-import { fetchAccounts, fetchTransactions, SFAccount, SFTransaction } from '../lib/simplefin';
+import { fetchAccounts, fetchTransactions, SFAccount } from '../lib/simplefin';
 
 function inferAccountType(account: SFAccount): string {
   const name = account.name.toLowerCase();
-  const balance = parseFloat(account.balance);
+  const balance = Number.parseFloat(account.balance);
 
   if (name.includes('credit') || name.includes('visa') || name.includes('mastercard')) return 'CREDIT_CARD';
   if (name.includes('saving')) return 'SAVINGS';
@@ -59,8 +59,8 @@ export async function importTransactions(): Promise<{ accountCount: number; tran
         where: { externalId: sfAccount.id },
         update: {
           name: sfAccount.name,
-          balance: parseFloat(sfAccount.balance),
-          availableBalance: sfAccount['available-balance'] ? parseFloat(sfAccount['available-balance']) : null,
+          balance: Number.parseFloat(sfAccount.balance),
+          availableBalance: sfAccount['available-balance'] ? Number.parseFloat(sfAccount['available-balance']) : null,
           balanceDate: new Date(sfAccount['balance-date'] * 1000),
           institution: sfAccount.org?.name || null,
           institutionDomain: sfAccount.org?.domain || null,
@@ -70,8 +70,8 @@ export async function importTransactions(): Promise<{ accountCount: number; tran
           name: sfAccount.name,
           currency: sfAccount.currency,
           type: inferAccountType(sfAccount) as any,
-          balance: parseFloat(sfAccount.balance),
-          availableBalance: sfAccount['available-balance'] ? parseFloat(sfAccount['available-balance']) : null,
+          balance: Number.parseFloat(sfAccount.balance),
+          availableBalance: sfAccount['available-balance'] ? Number.parseFloat(sfAccount['available-balance']) : null,
           balanceDate: new Date(sfAccount['balance-date'] * 1000),
           institution: sfAccount.org?.name || null,
           institutionDomain: sfAccount.org?.domain || null,
@@ -99,7 +99,7 @@ export async function importTransactions(): Promise<{ accountCount: number; tran
       await prisma.transaction.upsert({
         where: { externalId: sfTx.id },
         update: {
-          amount: parseFloat(sfTx.amount),
+          amount: Number.parseFloat(sfTx.amount),
           description: sfTx.description,
           payee: sfTx.payee || null,
           memo: sfTx.memo || null,
@@ -108,7 +108,7 @@ export async function importTransactions(): Promise<{ accountCount: number; tran
           externalId: sfTx.id,
           accountId: account.id,
           posted: new Date(sfTx.posted * 1000),
-          amount: parseFloat(sfTx.amount),
+          amount: Number.parseFloat(sfTx.amount),
           description: sfTx.description,
           payee: sfTx.payee || null,
           memo: sfTx.memo || null,

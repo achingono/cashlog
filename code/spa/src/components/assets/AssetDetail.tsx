@@ -14,7 +14,9 @@ interface AssetDetailProps {
   onClose: () => void;
 }
 
-export function AssetDetail({ assetId, open, onClose }: AssetDetailProps) {
+const LOADING_ROW_KEYS = ['asset-detail-loading-1', 'asset-detail-loading-2', 'asset-detail-loading-3', 'asset-detail-loading-4', 'asset-detail-loading-5'] as const;
+
+export function AssetDetail({ assetId, open, onClose }: Readonly<AssetDetailProps>) {
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,7 +41,7 @@ export function AssetDetail({ assetId, open, onClose }: AssetDetailProps) {
 
         {loading || !asset ? (
           <div className="space-y-4 mt-6">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded" />)}
+            {LOADING_ROW_KEYS.map((key) => <div key={key} className="h-8 bg-muted animate-pulse rounded" />)}
           </div>
         ) : (
           <div className="mt-6 space-y-6">
@@ -50,7 +52,7 @@ export function AssetDetail({ assetId, open, onClose }: AssetDetailProps) {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Type</p>
-                <Badge variant="outline">{ASSET_TYPE_LABELS[asset.type as AssetType]}</Badge>
+                <Badge variant="outline">{ASSET_TYPE_LABELS[asset.type]}</Badge>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Purchase Price</p>

@@ -11,6 +11,8 @@ import type { Goal } from "@/types";
 import { Target, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+const LOADING_SUMMARY_KEYS = ['goal-loading-1', 'goal-loading-2', 'goal-loading-3'] as const;
+
 export function GoalsPage() {
   const { goals, loading, error, createGoal, updateGoal, updateStatus, deleteGoal } = useGoals();
   const [formOpen, setFormOpen] = useState(false);
@@ -27,7 +29,7 @@ export function GoalsPage() {
       <div className="space-y-6">
         <h2 className="text-2xl font-bold tracking-tight">Goals</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}
+          {LOADING_SUMMARY_KEYS.map((key) => <Skeleton key={key} className="h-[120px] rounded-xl" />)}
         </div>
         <Skeleton className="h-[300px] rounded-xl" />
       </div>

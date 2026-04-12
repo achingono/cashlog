@@ -45,7 +45,8 @@ router.post('/', validate(createBudgetSchema, 'body'), async (req, res, next) =>
 
 router.put('/:id', validate(updateBudgetSchema, 'body'), async (req, res, next) => {
   try {
-    const budget = await updateBudget(req.params.id as string, req.body);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const budget = await updateBudget(id, req.body);
     res.json({ data: budget });
   } catch (err) {
     next(err);
@@ -54,7 +55,8 @@ router.put('/:id', validate(updateBudgetSchema, 'body'), async (req, res, next) 
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    await deleteBudget(req.params.id as string);
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await deleteBudget(id);
     res.status(204).send();
   } catch (err) {
     next(err);

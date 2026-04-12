@@ -21,7 +21,8 @@ export const api = {
     const params = new URLSearchParams();
     if (accountId) params.set('accountId', accountId);
     const qs = params.toString();
-    return request<{ data: import('../types').DashboardSummary }>(`/dashboard/summary${qs ? `?${qs}` : ''}`);
+    const querySuffix = qs ? `?${qs}` : '';
+    return request<{ data: import('../types').DashboardSummary }>(`/dashboard/summary${querySuffix}`);
   },
   getDashboardTrends: (period: number | string = 'all', accountId?: string) => {
     const params = new URLSearchParams({ period: String(period) });
@@ -117,7 +118,8 @@ export const api = {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
     const qs = params.toString();
-    return request<{ data: import('../types').Goal[] }>(`/goals${qs ? `?${qs}` : ''}`);
+    const querySuffix = qs ? `?${qs}` : '';
+    return request<{ data: import('../types').Goal[] }>(`/goals${querySuffix}`);
   },
   getGoal: (id: string) => request<{ data: import('../types').Goal }>(`/goals/${id}`),
   createGoal: (data: {

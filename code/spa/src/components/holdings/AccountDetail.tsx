@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { ACCOUNT_TYPE_LABELS, type AccountType, type AccountDetail as AccountDetailType } from "@/types";
+import { ACCOUNT_TYPE_LABELS, type AccountDetail as AccountDetailType } from "@/types";
 import { api } from "@/lib/api";
 import { useState, useEffect } from "react";
 
@@ -12,7 +12,9 @@ interface AccountDetailProps {
   onClose: () => void;
 }
 
-export function AccountDetail({ accountId, open, onClose }: AccountDetailProps) {
+const LOADING_ROW_KEYS = ['account-detail-loading-1', 'account-detail-loading-2', 'account-detail-loading-3', 'account-detail-loading-4', 'account-detail-loading-5'] as const;
+
+export function AccountDetail({ accountId, open, onClose }: Readonly<AccountDetailProps>) {
   const [account, setAccount] = useState<AccountDetailType | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +37,7 @@ export function AccountDetail({ accountId, open, onClose }: AccountDetailProps) 
 
         {loading || !account ? (
           <div className="space-y-4 mt-6">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded" />)}
+            {LOADING_ROW_KEYS.map((key) => <div key={key} className="h-8 bg-muted animate-pulse rounded" />)}
           </div>
         ) : (
           <div className="mt-6 space-y-6">
@@ -46,7 +48,7 @@ export function AccountDetail({ accountId, open, onClose }: AccountDetailProps) 
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Type</p>
-                <Badge variant="outline">{ACCOUNT_TYPE_LABELS[account.type as AccountType]}</Badge>
+                <Badge variant="outline">{ACCOUNT_TYPE_LABELS[account.type]}</Badge>
               </div>
               {account.availableBalance !== null && (
                 <div>

@@ -10,6 +10,8 @@ import { GoalProgress } from "@/components/dashboard/GoalProgress";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const LOADING_CARD_KEYS = ['dashboard-loading-1', 'dashboard-loading-2', 'dashboard-loading-3', 'dashboard-loading-4'] as const;
+
 export function DashboardPage() {
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [period, setPeriod] = useState("all");
@@ -32,8 +34,8 @@ export function DashboardPage() {
           <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-[120px] rounded-xl" />
+          {LOADING_CARD_KEYS.map((key) => (
+            <Skeleton key={key} className="h-[120px] rounded-xl" />
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-7">

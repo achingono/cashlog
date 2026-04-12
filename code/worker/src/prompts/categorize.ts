@@ -4,9 +4,12 @@ export function buildCategorizationPrompt(
 ): string {
   const escapeJson = (value: string) => JSON.stringify(value);
   const categoryList = categories.map(c => `- "${c.name}" (id: ${c.id})`).join('\n');
-  const transactionList = transactions.map(t =>
-    `{ "id": ${escapeJson(t.id)}, "description": ${escapeJson(t.description)}, "amount": ${escapeJson(t.amount)}${t.payee ? `, "payee": ${escapeJson(t.payee)}` : ''} }`
-  ).join('\n');
+  const transactionList = transactions
+    .map((t) => {
+      const payeePart = t.payee ? `, "payee": ${escapeJson(t.payee)}` : '';
+      return `{ "id": ${escapeJson(t.id)}, "description": ${escapeJson(t.description)}, "amount": ${escapeJson(t.amount)}${payeePart} }`;
+    })
+    .join('\n');
 
   return `You are a financial transaction categorizer. Analyze each transaction and assign the most appropriate category.
 

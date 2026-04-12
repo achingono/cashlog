@@ -2,8 +2,7 @@ import { Pie, PieChart, Cell } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { formatCurrency } from "@/lib/formatters";
-import type { Account } from "@/types";
-import { ACCOUNT_TYPE_LABELS, type AccountType } from "@/types";
+import { ACCOUNT_TYPE_LABELS, type Account } from "@/types";
 
 interface HoldingsChartProps {
   accounts: Account[];
@@ -14,10 +13,10 @@ const COLORS = [
   "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(220, 70%, 60%)",
 ];
 
-export function HoldingsChart({ accounts }: HoldingsChartProps) {
+export function HoldingsChart({ accounts }: Readonly<HoldingsChartProps>) {
   const byType = new Map<string, number>();
   accounts.forEach(a => {
-    const label = ACCOUNT_TYPE_LABELS[a.type as AccountType] || a.type;
+    const label = ACCOUNT_TYPE_LABELS[a.type] || a.type;
     byType.set(label, (byType.get(label) || 0) + Math.abs(a.balance));
   });
 
@@ -41,7 +40,7 @@ export function HoldingsChart({ accounts }: HoldingsChartProps) {
           <PieChart>
             <ChartTooltip content={<ChartTooltipContent formatter={(v) => formatCurrency(Number(v))} />} />
             <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2}>
-              {chartData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              {chartData.map((entry) => <Cell key={entry.name} fill={entry.fill} />)}
             </Pie>
           </PieChart>
         </ChartContainer>

@@ -21,7 +21,7 @@ export function DatePicker({
   placeholder = "Pick a date",
   className,
   disabled,
-}: DatePickerProps) {
+}: Readonly<DatePickerProps>) {
   const [open, setOpen] = useState(false);
 
   const selectedDate = useMemo(() => {

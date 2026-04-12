@@ -6,8 +6,8 @@ const router = Router();
 
 router.get('/', async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = Number.parseInt(req.query.page as string, 10) || 1;
+    const limit = Number.parseInt(req.query.limit as string, 10) || 10;
     const result = await getReports(page, limit);
     res.json(result);
   } catch (err) {

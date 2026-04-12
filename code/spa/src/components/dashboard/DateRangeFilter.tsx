@@ -15,7 +15,7 @@ export function DateRangeFilter({
   onAccountChange,
   period,
   onPeriodChange,
-}: DateRangeFilterProps) {
+}: Readonly<DateRangeFilterProps>) {
   return (
     <div className="flex items-center gap-3">
       <Select value={selectedAccountId} onValueChange={onAccountChange}>
