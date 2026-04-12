@@ -43,6 +43,9 @@ jobs:
       - name: Run comprehensive SonarQube scan
         run: scripts/sonar/run-scan.sh
 
+      - name: Summarize Sonar issues by rule
+        run: scripts/sonar/summarize-issues.sh .sonar/issues.json .sonar
+
       - name: Create PRDs from discovered issue clusters
         run: scripts/sonar/generate-prds.sh .sonar/issues.json docs
 
@@ -52,6 +55,11 @@ jobs:
           name: sonar-scan-results
           path: |
             .sonar/issues.json
+            .sonar/issues.tsv
+            .sonar/issues-top-sample.tsv
+            .sonar/rule-counts.tsv
+            .sonar/rule-counts-top20.tsv
+            .sonar/top-rule-violations.txt
             docs/sonar-prds
 
       - name: Create PR with generated PRDs
