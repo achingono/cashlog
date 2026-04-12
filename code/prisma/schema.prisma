@@ -134,7 +134,7 @@ model AccountNetWorthSnapshot {
 
   @@unique([accountId, date])
   @@index([date])
-  @@index([accountId, date])
+
 
 }
 

@@ -13,6 +13,9 @@ function toDateKey(d: Date): string {
 function parseBackfillDays(): number {
   const raw = Number(process.env.SNAPSHOT_BACKFILL_DAYS ?? '180');
   if (Number.isNaN(raw)) return 180;
+  // Keep backfills within the supported operational window: at least 90 days to
+  // avoid generating partial historical coverage, and at most 365 days to limit
+  // the job's workload to roughly one year of snapshots.
   return Math.min(365, Math.max(90, Math.floor(raw)));
 }
 
@@ -91,6 +94,10 @@ export async function backfillHistoricalSnapshots(): Promise<void> {
 
   for (const account of accounts) {
     let futureSum = 0;
+    // Walk backward from today so we can reconstruct each prior day's end balance
+    // from the current balance by subtracting transactions that happened after that day.
+    // We store the balance before adding the current day's transactions into `futureSum`,
+    // because those transactions affect earlier days but are already reflected in later ones.
     const currentBalance = decimalToNumber(account.balance);
     const daily = new Map<string, number>();
 
