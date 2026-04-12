@@ -82,7 +82,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          copilot --allow-all "Read .sonar/issues.json and apply code fixes for all open SonarQube issues in this repository. Keep behavior unchanged, update docs/sonar-prds with scripts/sonar/generate-prds.sh after fixes, and leave the repository in a buildable state."
+          copilot --allow-all --prompt "Read .sonar/issues.json and apply code fixes for all open SonarQube issues in this repository. Keep behavior unchanged, update docs/sonar-prds with scripts/sonar/generate-prds.sh after fixes, and leave the repository in a buildable state."
 
       - name: Regenerate Sonar artifacts after Copilot fixes
         run: |
