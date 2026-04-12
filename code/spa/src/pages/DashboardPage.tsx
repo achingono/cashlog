@@ -12,9 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function DashboardPage() {
   const [selectedAccount, setSelectedAccount] = useState("all");
-  const [period, setPeriod] = useState("6");
+  const [period, setPeriod] = useState("all");
   const accountId = selectedAccount === "all" ? undefined : selectedAccount;
-  const { summary, trends, spending, budgets, goals, loading, error } = useDashboard(accountId);
+  const { summary, trends, spending, budgets, goals, loading, error } = useDashboard(accountId, period);
   const { accounts } = useAccounts();
 
   if (error) {
@@ -70,7 +70,7 @@ export function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-7">
         <div className="lg:col-span-4">
-          <RecentTransactions />
+          <RecentTransactions accountId={accountId} />
         </div>
         <div className="lg:col-span-3">
           <BudgetProgress budgets={budgets} />

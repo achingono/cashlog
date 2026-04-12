@@ -5,22 +5,27 @@ import { api } from "@/lib/api";
 import { useState, useEffect } from "react";
 import type { Transaction } from "@/types";
 
-export function RecentTransactions() {
+interface RecentTransactionsProps {
+  accountId?: string;
+}
+
+export function RecentTransactions({ accountId }: RecentTransactionsProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getTransactions({ limit: 8 })
+    setLoading(true);
+    api.getTransactions({ limit: 8, accountId })
       .then(res => setTransactions(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [accountId]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Recent Transactions</CardTitle>
-        <CardDescription>Latest activity across all accounts</CardDescription>
+        <CardDescription>{accountId ? 'Latest activity for selected account' : 'Latest activity across all accounts'}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (

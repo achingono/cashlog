@@ -21,7 +21,8 @@ export async function getTransactions(
   const where: any = {};
 
   if (filters.accountId) where.accountId = filters.accountId;
-  if (filters.categoryId) where.categoryId = filters.categoryId;
+  if (filters.categoryId === '__uncategorized') where.categoryId = null;
+  else if (filters.categoryId) where.categoryId = filters.categoryId;
   if (filters.startDate || filters.endDate) {
     where.posted = {};
     if (filters.startDate) where.posted.gte = filters.startDate;
@@ -68,6 +69,68 @@ export async function getTransactions(
       totalPages: Math.ceil(total / limit),
     },
   };
+}
+
+export async function getTransactionFilterCategories(filters: Omit<TransactionFilters, 'categoryId'>) {
+  const where: any = {};
+
+  if (filters.accountId) where.accountId = filters.accountId;
+  if (filters.startDate || filters.endDate) {
+    where.posted = {};
+    if (filters.startDate) where.posted.gte = filters.startDate;
+    if (filters.endDate) where.posted.lte = filters.endDate;
+  }
+  if (filters.search) {
+    where.OR = [
+      { description: { contains: filters.search, mode: 'insensitive' } },
+      { payee: { contains: filters.search, mode: 'insensitive' } },
+      { memo: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
+  const grouped = await prisma.transaction.groupBy({
+    by: ['categoryId'],
+    where,
+    _count: { _all: true },
+  });
+
+  const categoryIds = grouped.map((g) => g.categoryId).filter((id): id is string => !!id);
+  const categories = categoryIds.length
+    ? await prisma.category.findMany({
+        where: { id: { in: categoryIds } },
+        select: { id: true, name: true, icon: true, color: true },
+      })
+    : [];
+
+  const byId = new Map(categories.map((c) => [c.id, c]));
+
+  const options = grouped
+    .map((g) => {
+      if (!g.categoryId) {
+        return {
+          id: '__uncategorized',
+          name: 'Uncategorized',
+          icon: 'HelpCircle',
+          color: 'gray',
+          count: g._count._all,
+        };
+      }
+
+      const category = byId.get(g.categoryId);
+      if (!category) return null;
+
+      return {
+        id: category.id,
+        name: category.name,
+        icon: category.icon,
+        color: category.color,
+        count: g._count._all,
+      };
+    })
+    .filter((v): v is NonNullable<typeof v> => !!v)
+    .sort((a, b) => b.count - a.count);
+
+  return options;
 }
 
 export async function updateTransactionCategory(id: string, categoryId: string) {

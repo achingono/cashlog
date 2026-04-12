@@ -3,9 +3,10 @@ import { getDashboardSummary, getTrends, getSpendingByCategory } from '../servic
 
 const router = Router();
 
-router.get('/summary', async (_req, res, next) => {
+router.get('/summary', async (req, res, next) => {
   try {
-    const summary = await getDashboardSummary();
+    const accountId = req.query.accountId as string | undefined;
+    const summary = await getDashboardSummary(accountId);
     res.json({ data: summary });
   } catch (err) {
     next(err);
@@ -14,7 +15,8 @@ router.get('/summary', async (_req, res, next) => {
 
 router.get('/trends', async (req, res, next) => {
   try {
-    const months = parseInt(req.query.period as string) || 6;
+    const periodParam = req.query.period as string | undefined;
+    const months = periodParam && periodParam !== 'all' ? parseInt(periodParam) || 6 : undefined;
     const accountId = req.query.accountId as string | undefined;
     const trends = await getTrends(months, accountId);
     res.json({ data: trends });
@@ -27,7 +29,8 @@ router.get('/spending-by-category', async (req, res, next) => {
   try {
     const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-    const spending = await getSpendingByCategory(startDate, endDate);
+    const accountId = req.query.accountId as string | undefined;
+    const spending = await getSpendingByCategory(startDate, endDate, accountId);
     res.json({ data: spending });
   } catch (err) {
     next(err);

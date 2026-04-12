@@ -5,10 +5,10 @@ import { getTotalAssetValue } from './asset.service';
 const ASSET_TYPES = ['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER'];
 const LIABILITY_TYPES = ['CREDIT_CARD', 'LOAN', 'MORTGAGE'];
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
+export async function getDashboardSummary(accountId?: string): Promise<DashboardSummary> {
   const [accounts, manualAssetValue] = await Promise.all([
-    prisma.account.findMany({ where: { isActive: true } }),
-    getTotalAssetValue(),
+    prisma.account.findMany({ where: { isActive: true, ...(accountId ? { id: accountId } : {}) } }),
+    accountId ? Promise.resolve(0) : getTotalAssetValue(),
   ]);
 
   let totalAssets = manualAssetValue;
@@ -27,7 +27,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const monthlyTransactions = await prisma.transaction.findMany({
-    where: { posted: { gte: startOfMonth } },
+    where: { posted: { gte: startOfMonth }, ...(accountId ? { accountId } : {}) },
   });
 
   let monthlyIncome = 0;
@@ -49,13 +49,13 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   };
 }
 
-export async function getTrends(months: number = 6, accountId?: string): Promise<TrendDataPoint[]> {
+export async function getTrends(months?: number, accountId?: string): Promise<TrendDataPoint[]> {
+  const snapshotWhere = months && months > 0
+    ? { date: { gte: new Date(new Date().setMonth(new Date().getMonth() - months)) } }
+    : undefined;
+
   const snapshots = await prisma.netWorthSnapshot.findMany({
-    where: {
-      date: {
-        gte: new Date(new Date().setMonth(new Date().getMonth() - months)),
-      },
-    },
+    where: snapshotWhere,
     orderBy: { date: 'asc' },
   });
 
@@ -69,8 +69,22 @@ export async function getTrends(months: number = 6, accountId?: string): Promise
   // Fallback: generate from transaction history
   const points: TrendDataPoint[] = [];
   const now = new Date();
+  let monthCount = months && months > 0 ? months : 0;
 
-  for (let i = months; i >= 0; i--) {
+  if (!monthCount) {
+    const firstTx = await prisma.transaction.findFirst({
+      where: accountId ? { accountId } : undefined,
+      orderBy: { posted: 'asc' },
+      select: { posted: true },
+    });
+
+    if (!firstTx) return [];
+
+    const start = new Date(firstTx.posted.getFullYear(), firstTx.posted.getMonth(), 1);
+    monthCount = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  }
+
+  for (let i = monthCount; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
@@ -93,10 +107,14 @@ export async function getTrends(months: number = 6, accountId?: string): Promise
   return points;
 }
 
-export async function getSpendingByCategory(startDate?: Date, endDate?: Date) {
+export async function getSpendingByCategory(startDate?: Date, endDate?: Date, accountId?: string) {
   const where: any = {
     amount: { lt: 0 },
   };
+
+  if (accountId) {
+    where.accountId = accountId;
+  }
 
   if (startDate || endDate) {
     where.posted = {};

@@ -17,16 +17,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   // Dashboard
-  getDashboardSummary: () => request<{ data: import('../types').DashboardSummary }>('/dashboard/summary'),
-  getDashboardTrends: (period = 6, accountId?: string) => {
+  getDashboardSummary: (accountId?: string) => {
+    const params = new URLSearchParams();
+    if (accountId) params.set('accountId', accountId);
+    const qs = params.toString();
+    return request<{ data: import('../types').DashboardSummary }>(`/dashboard/summary${qs ? `?${qs}` : ''}`);
+  },
+  getDashboardTrends: (period: number | string = 'all', accountId?: string) => {
     const params = new URLSearchParams({ period: String(period) });
     if (accountId) params.set('accountId', accountId);
     return request<{ data: import('../types').TrendDataPoint[] }>(`/dashboard/trends?${params}`);
   },
-  getSpendingByCategory: (startDate?: string, endDate?: string) => {
+  getSpendingByCategory: (startDate?: string, endDate?: string, accountId?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
+    if (accountId) params.set('accountId', accountId);
     return request<{ data: import('../types').SpendingByCategory[] }>(`/dashboard/spending-by-category?${params}`);
   },
 
@@ -48,12 +54,22 @@ export const api = {
     Object.entries(params).forEach(([k, v]) => { if (v !== undefined) searchParams.set(k, String(v)); });
     return request<import('../types').PaginatedResponse<import('../types').Transaction>>(`/transactions?${searchParams}`);
   },
+  getTransactionFilterCategories: (params: {
+    accountId?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  } = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v !== undefined) searchParams.set(k, String(v)); });
+    return request<{ data: import('../types').TransactionFilterCategory[] }>(`/transactions/filter-categories?${searchParams}`);
+  },
   updateTransactionCategory: (id: string, categoryId: string) =>
     request(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify({ categoryId }) }),
 
   // Holdings
   getHoldings: () => request<{ data: import('../types').HoldingsSummary }>('/holdings'),
-  getHoldingsHistory: (period = 12) => request<{ data: import('../types').TrendDataPoint[] }>(`/holdings/history?period=${period}`),
+  getHoldingsHistory: (period: number | string = 'all') => request<{ data: import('../types').TrendDataPoint[] }>(`/holdings/history?period=${period}`),
 
   // Budgets
   getBudgets: () => request<{ data: import('../types').Budget[] }>('/budgets'),

@@ -45,6 +45,10 @@ export interface CategoryRef {
   color: string | null;
 }
 
+export interface TransactionFilterCategory extends CategoryRef {
+  count: number;
+}
+
 export interface Category {
   id: string;
   name: string;

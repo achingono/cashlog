@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/formatters";
 import { ACCOUNT_TYPE_LABELS, ASSET_TYPES, LIABILITY_TYPES, type AccountType } from "@/types";
 
 export function HoldingsPage() {
-  const { holdings, history, loading, error } = useHoldings();
+  const [period, setPeriod] = useState("all");
+  const { holdings, history, loading, error } = useHoldings(period);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   if (error) {
@@ -34,7 +36,21 @@ export function HoldingsPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold tracking-tight">Holdings</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold tracking-tight">Holdings</h2>
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="3">3 Months</SelectItem>
+            <SelectItem value="6">6 Months</SelectItem>
+            <SelectItem value="12">12 Months</SelectItem>
+            <SelectItem value="24">24 Months</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <AccountSummaryCard title="Total Assets" amount={holdings.totalAssets} icon="TrendingUp" />

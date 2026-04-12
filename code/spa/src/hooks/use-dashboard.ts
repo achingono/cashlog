@@ -2,7 +2,16 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import type { DashboardSummary, TrendDataPoint, SpendingByCategory, Budget, Goal } from '../types';
 
-export function useDashboard(accountId?: string) {
+function periodToStartDate(period: string): string | undefined {
+  if (period === 'all') return undefined;
+  const months = parseInt(period, 10);
+  if (months <= 0 || Number.isNaN(months)) return undefined;
+  const date = new Date();
+  date.setMonth(date.getMonth() - months);
+  return date.toISOString().split('T')[0];
+}
+
+export function useDashboard(accountId?: string, period: string = 'all') {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [trends, setTrends] = useState<TrendDataPoint[]>([]);
   const [spending, setSpending] = useState<SpendingByCategory[]>([]);
@@ -13,10 +22,11 @@ export function useDashboard(accountId?: string) {
 
   useEffect(() => {
     setLoading(true);
+    const startDate = periodToStartDate(period);
     Promise.all([
-      api.getDashboardSummary(),
-      api.getDashboardTrends(6, accountId),
-      api.getSpendingByCategory(),
+      api.getDashboardSummary(accountId),
+      api.getDashboardTrends(period, accountId),
+      api.getSpendingByCategory(startDate, undefined, accountId),
       api.getBudgets(),
       api.getGoals('ACTIVE'),
     ])
@@ -29,7 +39,7 @@ export function useDashboard(accountId?: string) {
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [accountId]);
+  }, [accountId, period]);
 
   return { summary, trends, spending, budgets, goals, loading, error };
 }

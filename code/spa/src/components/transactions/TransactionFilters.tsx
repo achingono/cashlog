@@ -3,11 +3,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
-import type { Account, Category } from "@/types";
+import type { Account, TransactionFilterCategory } from "@/types";
 
 interface TransactionFiltersProps {
   accounts: Account[];
-  categories: Category[];
+  categories: TransactionFilterCategory[];
   filters: {
     accountId?: string;
     categoryId?: string;
@@ -50,7 +50,7 @@ export function TransactionFilters({ accounts, categories, filters, onFilterChan
         <SelectContent>
           <SelectItem value="all">All Categories</SelectItem>
           {categories.map(c => (
-            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            <SelectItem key={c.id} value={c.id}>{c.name} ({c.count})</SelectItem>
           ))}
         </SelectContent>
       </Select>

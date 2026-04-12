@@ -110,9 +110,9 @@ test('transactions filters interaction works', async ({ page }) => {
   await searchInput.fill('coffee');
   await expect(searchInput).toHaveValue('coffee');
 
-  const dateInputs = page.locator('input[type="date"]');
-  await dateInputs.nth(0).fill('2026-01-01');
-  await dateInputs.nth(1).fill('2026-12-31');
+  await page.locator('button:has-text("All Accounts")').first().click();
+  await page.getByRole('option', { name: 'All Accounts' }).click();
+
   await expect(page.getByRole('button', { name: /Clear/i })).toBeVisible();
 
   await page.getByRole('button', { name: /Clear/i }).click();

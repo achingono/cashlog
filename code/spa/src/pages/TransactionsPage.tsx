@@ -5,21 +5,37 @@ import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import type { Account, Category } from "@/types";
+import type { Account, TransactionFilterCategory } from "@/types";
 
 export function TransactionsPage() {
   const { transactions, pagination, loading, filters, updateFilters, setPage } = useTransactions();
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<TransactionFilterCategory[]>([]);
 
   useEffect(() => {
-    Promise.all([api.getAccounts(), api.getCategories()])
-      .then(([a, c]) => {
+    api.getAccounts()
+      .then((a) => {
         setAccounts(a.data);
-        setCategories(c.data);
       })
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    api.getTransactionFilterCategories({
+      accountId: filters.accountId,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      search: filters.search,
+    })
+      .then((res) => {
+        setCategories(res.data);
+
+        if (filters.categoryId && !res.data.some((c) => c.id === filters.categoryId)) {
+          updateFilters({ categoryId: undefined });
+        }
+      })
+      .catch(console.error);
+  }, [filters.accountId, filters.startDate, filters.endDate, filters.search, updateFilters]);
 
   return (
     <div className="space-y-6">

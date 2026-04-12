@@ -44,11 +44,13 @@ export async function getHoldings(): Promise<HoldingsSummary> {
   };
 }
 
-export async function getHoldingsHistory(months: number = 12): Promise<TrendDataPoint[]> {
+export async function getHoldingsHistory(months?: number): Promise<TrendDataPoint[]> {
+  const where = months && months > 0
+    ? { date: { gte: new Date(new Date().setMonth(new Date().getMonth() - months)) } }
+    : undefined;
+
   const snapshots = await prisma.netWorthSnapshot.findMany({
-    where: {
-      date: { gte: new Date(new Date().setMonth(new Date().getMonth() - months)) },
-    },
+    where,
     orderBy: { date: 'asc' },
   });
 

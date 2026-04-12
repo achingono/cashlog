@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { getTransactions, updateTransactionCategory } from '../services/transaction.service';
+import { getTransactions, getTransactionFilterCategories, updateTransactionCategory } from '../services/transaction.service';
 import { validate } from '../middleware/validation';
 import { AppError } from '../middleware/error-handler';
 
@@ -16,6 +16,13 @@ const querySchema = z.object({
   limit: z.string().default('50').transform(Number),
 });
 
+const filterCategoryQuerySchema = z.object({
+  accountId: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  search: z.string().optional(),
+});
+
 router.get('/', validate(querySchema, 'query'), async (req, res, next) => {
   try {
     const { page, limit, startDate, endDate, ...rest } = req.query as any;
@@ -29,6 +36,20 @@ router.get('/', validate(querySchema, 'query'), async (req, res, next) => {
       limit
     );
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/filter-categories', validate(filterCategoryQuerySchema, 'query'), async (req, res, next) => {
+  try {
+    const { startDate, endDate, ...rest } = req.query as any;
+    const categories = await getTransactionFilterCategories({
+      ...rest,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+    res.json({ data: categories });
   } catch (err) {
     next(err);
   }
