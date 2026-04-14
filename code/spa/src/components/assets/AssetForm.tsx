@@ -238,6 +238,7 @@ export function AssetForm({ open, onClose, onSubmit, asset }: Readonly<AssetForm
               name="purchaseDate"
               render={({ field }) => (
                 <DatePicker
+                  id="purchaseDate"
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="Select purchase date"

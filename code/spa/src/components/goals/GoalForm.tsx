@@ -121,6 +121,7 @@ export function GoalForm({ open, onClose, onSubmit, goal }: Readonly<GoalFormPro
                 name="targetDate"
                 render={({ field }) => (
                   <DatePicker
+                    id="targetDate"
                     value={field.value}
                     onChange={field.onChange}
                     placeholder="Select target date"
