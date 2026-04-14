@@ -111,7 +111,7 @@ async function tryAiValuation(asset: any): Promise<number | null> {
     const response = await openai.chat.completions.create({
       model: process.env.AZURE_OPENAI_DEPLOYMENT!,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      temperature: process.env.AZURE_OPENAI_TEMPERATURE ? Number(process.env.AZURE_OPENAI_TEMPERATURE) : 1,
       response_format: { type: 'json_object' },
     });
 

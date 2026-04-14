@@ -265,7 +265,7 @@ export async function generatePFS(): Promise<any> {
   const response = await openai.chat.completions.create({
     model: process.env.AZURE_OPENAI_DEPLOYMENT!,
     messages: [{ role: 'user', content: prompt }],
-    temperature: process.env.AZURE_OPENAI_TEMPERATURE ? Number(process.env.AZURE_OPENAI_TEMPERATURE) : 0.7,
+    temperature: process.env.AZURE_OPENAI_TEMPERATURE ? Number(process.env.AZURE_OPENAI_TEMPERATURE) : 1,
     response_format: { type: 'json_object' },
   });
 

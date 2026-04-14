@@ -1,13 +1,16 @@
 import { AzureOpenAI } from 'openai';
 
-const azureOpenAiConfig = {
-  endpoint: process.env.AZURE_OPENAI_ENDPOINT?.trim() || '',
-  apiKey: process.env.AZURE_OPENAI_API_KEY?.trim() || '',
-  apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-06-01',
-  deployment: process.env.AZURE_OPENAI_DEPLOYMENT?.trim() || '',
-};
+function getAzureOpenAiConfig() {
+  return {
+    endpoint: process.env.AZURE_OPENAI_ENDPOINT?.trim() || '',
+    apiKey: process.env.AZURE_OPENAI_API_KEY?.trim() || '',
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-06-01',
+    deployment: process.env.AZURE_OPENAI_DEPLOYMENT?.trim() || '',
+  };
+}
 
 export function getMissingAzureOpenAIConfig(): string[] {
+  const azureOpenAiConfig = getAzureOpenAiConfig();
   const missing: string[] = [];
   if (!azureOpenAiConfig.endpoint) missing.push('AZURE_OPENAI_ENDPOINT');
   if (!azureOpenAiConfig.apiKey) missing.push('AZURE_OPENAI_API_KEY');
@@ -15,11 +18,24 @@ export function getMissingAzureOpenAIConfig(): string[] {
   return missing;
 }
 
-const client = new AzureOpenAI({
-  endpoint: azureOpenAiConfig.endpoint,
-  apiKey: azureOpenAiConfig.apiKey,
-  apiVersion: azureOpenAiConfig.apiVersion,
-  deployment: azureOpenAiConfig.deployment,
-});
+let client: AzureOpenAI | null = null;
 
-export default client;
+function getClient(): AzureOpenAI {
+  if (client) return client;
+  const azureOpenAiConfig = getAzureOpenAiConfig();
+  client = new AzureOpenAI({
+    endpoint: azureOpenAiConfig.endpoint,
+    apiKey: azureOpenAiConfig.apiKey,
+    apiVersion: azureOpenAiConfig.apiVersion,
+    deployment: azureOpenAiConfig.deployment,
+  });
+  return client;
+}
+
+const openai = {
+  get chat() {
+    return getClient().chat;
+  },
+};
+
+export default openai;
