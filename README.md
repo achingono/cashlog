@@ -259,6 +259,31 @@ The SPA dev server (Vite) will proxy `/api/*` requests to the local API server a
 
 ---
 
+## ✅ Automated Testing
+
+```bash
+cd code
+
+# Run all unit + integration tests
+npm test
+
+# Run all tests with coverage
+npm run test:coverage
+
+# Run Playwright E2E tests
+npm run test:e2e
+```
+
+Coverage reports are generated per workspace:
+
+- `code/api/coverage/lcov.info`
+- `code/spa/coverage/lcov.info`
+- `code/worker/coverage/lcov.info`
+
+These LCOV files are also wired into `sonar-project.properties` for SonarQube analysis.
+
+---
+
 ## 🗄 Database Models
 
 | Model               | Description                                                  |
