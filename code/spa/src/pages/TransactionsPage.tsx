@@ -1,47 +1,72 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTransactions } from "@/hooks/use-transactions";
+import { TransactionImportDialog } from "@/components/transactions/TransactionImportDialog";
 import { TransactionFilters } from "@/components/transactions/TransactionFilters";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import type { Account, TransactionFilterCategory } from "@/types";
+import type { Account, TransactionFilterCategory, TransactionImportResult } from "@/types";
+import { Upload } from "lucide-react";
+import { toast } from "sonner";
 
 const LOADING_ROW_KEYS = ['tx-loading-1', 'tx-loading-2', 'tx-loading-3', 'tx-loading-4', 'tx-loading-5', 'tx-loading-6', 'tx-loading-7', 'tx-loading-8'] as const;
 
 export function TransactionsPage() {
-  const { transactions, pagination, loading, filters, updateFilters, setPage } = useTransactions();
+  const { transactions, pagination, loading, filters, updateFilters, setPage, refresh } = useTransactions();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<TransactionFilterCategory[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
 
-  useEffect(() => {
-    api.getAccounts()
-      .then((a) => {
-        setAccounts(a.data);
-      })
-      .catch(console.error);
+  const loadAccounts = useCallback(async () => {
+    const response = await api.getAccounts();
+    setAccounts(response.data);
   }, []);
 
-  useEffect(() => {
-    api.getTransactionFilterCategories({
+  const loadCategories = useCallback(async () => {
+    const response = await api.getTransactionFilterCategories({
       accountId: filters.accountId,
       startDate: filters.startDate,
       endDate: filters.endDate,
       search: filters.search,
-    })
-      .then((res) => {
-        setCategories(res.data);
+    });
 
-        if (filters.categoryId && !res.data.some((c) => c.id === filters.categoryId)) {
-          updateFilters({ categoryId: undefined });
-        }
-      })
-      .catch(console.error);
-  }, [filters.accountId, filters.startDate, filters.endDate, filters.search, updateFilters]);
+    setCategories(response.data);
+
+    if (filters.categoryId && !response.data.some((category) => category.id === filters.categoryId)) {
+      updateFilters({ categoryId: undefined });
+    }
+  }, [filters.accountId, filters.categoryId, filters.endDate, filters.search, filters.startDate, updateFilters]);
+
+  useEffect(() => {
+    loadAccounts().catch(console.error);
+  }, [loadAccounts]);
+
+  useEffect(() => {
+    loadCategories().catch(console.error);
+  }, [loadCategories]);
+
+  const handleImported = async (result: TransactionImportResult) => {
+    await Promise.all([refresh(), loadAccounts(), loadCategories()]);
+
+    const destinationLabel = result.account.created
+      ? `${result.account.name} created`
+      : `${result.account.name} updated`;
+
+    toast.success('Transactions imported', {
+      description: `${result.importedCount} added, ${result.skippedCount} skipped from ${result.parsedCount} parsed. ${destinationLabel}.`,
+    });
+  };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
+        <Button onClick={() => setImportOpen(true)}>
+          <Upload className="mr-2 h-4 w-4" /> Import File
+        </Button>
+      </div>
 
       <TransactionFilters
         accounts={accounts}
@@ -65,6 +90,13 @@ export function TransactionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <TransactionImportDialog
+        open={importOpen}
+        accounts={accounts}
+        onClose={() => setImportOpen(false)}
+        onImported={handleImported}
+      />
     </div>
   );
 }

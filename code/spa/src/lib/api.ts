@@ -1,9 +1,14 @@
 const API_BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers);
+  if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
@@ -67,6 +72,32 @@ export const api = {
   },
   updateTransactionCategory: (id: string, categoryId: string) =>
     request(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify({ categoryId }) }),
+  importTransactions: (input: {
+    file: File;
+    format?: import('../types').TransactionImportFormat;
+    accountId?: string;
+    accountName?: string;
+    institution?: string;
+    currency?: string;
+    accountType?: import('../types').AccountType;
+    accountBalance?: number;
+  }) => {
+    const formData = new FormData();
+    formData.set('file', input.file);
+
+    if (input.format) formData.set('format', input.format);
+    if (input.accountId) formData.set('accountId', input.accountId);
+    if (input.accountName) formData.set('accountName', input.accountName);
+    if (input.institution) formData.set('institution', input.institution);
+    if (input.currency) formData.set('currency', input.currency);
+    if (input.accountType) formData.set('accountType', input.accountType);
+    if (input.accountBalance !== undefined) formData.set('accountBalance', String(input.accountBalance));
+
+    return request<{ data: import('../types').TransactionImportResult }>('/transactions/import', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   // Holdings
   getHoldings: () => request<{ data: import('../types').HoldingsSummary }>('/holdings'),

@@ -68,4 +68,29 @@ describe('api client', () => {
       expect.any(Object),
     );
   });
+
+  it('submits transaction imports as multipart form data', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: vi.fn().mockResolvedValue({ data: { importedCount: 1 } }),
+    });
+
+    const file = new File(['Date,Amount,Description\n2026-01-01,10,Deposit\n'], 'import.csv', { type: 'text/csv' });
+
+    await api.importTransactions({
+      file,
+      accountId: 'acc-1',
+      format: 'csv',
+    });
+
+    const [path, options] = fetchMock.mock.calls[0];
+    expect(path).toBe('/api/transactions/import');
+    expect(options.method).toBe('POST');
+    expect(options.body).toBeInstanceOf(FormData);
+    expect((options.headers as Headers).get('Content-Type')).toBeNull();
+    expect((options.body as FormData).get('file')).toBe(file);
+    expect((options.body as FormData).get('accountId')).toBe('acc-1');
+    expect((options.body as FormData).get('format')).toBe('csv');
+  });
 });
