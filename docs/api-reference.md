@@ -414,9 +414,9 @@ curl "http://localhost:3000/api/transactions?categoryId=clx001&startDate=2025-01
 
 #### `POST /api/transactions/import`
 
-Imports transactions from an uploaded institution export file. Supports `CSV`, `OFX`, and `QFX`.
+Imports transactions from an uploaded institution export file. Supports `CSV`, `OFX`, `QFX`, and `XLSX`.
 
-The endpoint de-duplicates transactions (both within the uploaded file and against existing account transactions), writes only new rows, and triggers transaction categorization for newly imported records.
+The endpoint de-duplicates transactions (both within the uploaded file and against existing account transactions), writes only new rows, and triggers transaction categorization for newly imported records. Excel activity exports can include multiple accounts in a single workbook; when no manual destination account is provided, the API will split rows by account metadata and create or reuse accounts automatically.
 
 **Request Content Type:** `multipart/form-data`
 
@@ -424,14 +424,14 @@ The endpoint de-duplicates transactions (both within the uploaded file and again
 
 | Field            | Type   | Required | Description |
 | ---------------- | ------ | -------- | ----------- |
-| `file`           | file   | Yes      | Upload file (`.csv`, `.ofx`, `.qfx`) |
+| `file`           | file   | Yes      | Upload file (`.csv`, `.ofx`, `.qfx`, `.xlsx`) |
 | `accountId`      | string | Conditionally | Existing account ID to import into. If provided, no new account is created. |
-| `accountName`    | string | Conditionally | Required when `accountId` is omitted. Used to create a new account. |
+| `accountName`    | string | Conditionally | Used to create a new account when `accountId` is omitted. Not required for Excel multi-account imports that include account metadata. |
 | `institution`    | string | No       | New account institution (new account flow only). |
 | `currency`       | string | No       | New account currency (e.g., `USD`) (new account flow only). |
 | `accountType`    | string | No       | New account type (`CHECKING`, `SAVINGS`, `CREDIT_CARD`, `INVESTMENT`, `LOAN`, `MORTGAGE`, `OTHER`). |
 | `accountBalance` | number | No       | Starting balance for the new account. |
-| `format`         | string | No       | Explicit format override: `csv`, `ofx`, or `qfx`. If omitted, format is detected from file extension. |
+| `format`         | string | No       | Explicit format override: `csv`, `ofx`, `qfx`, or `xlsx`. If omitted, format is detected from file extension. |
 
 **Response:**
 
@@ -447,6 +447,13 @@ The endpoint de-duplicates transactions (both within the uploaded file and again
       "name": "Primary Checking",
       "created": false
     },
+    "accounts": [
+      {
+        "id": "clxacc123",
+        "name": "Primary Checking",
+        "created": false
+      }
+    ],
     "categorizationTriggered": true
   }
 }
@@ -456,7 +463,7 @@ The endpoint de-duplicates transactions (both within the uploaded file and again
 
 | Status | Code               | Condition |
 | ------ | ------------------ | --------- |
-| 400    | `VALIDATION_ERROR` | Missing/invalid form fields, missing file, unsupported format |
+| 400    | `VALIDATION_ERROR` | Missing/invalid form fields, missing file, unsupported format, or no account destination information |
 | 404    | `NOT_FOUND`        | `accountId` does not match an existing account |
 
 **curl Examples:**
@@ -474,6 +481,10 @@ curl -X POST http://localhost:3000/api/transactions/import \
   -F "currency=USD" \
   -F "accountType=CHECKING" \
   -F "file=@./transactions.csv"
+
+# Import a multi-account Excel activity export and let the API map accounts from the file
+curl -X POST http://localhost:3000/api/transactions/import \
+  -F "file=@./Activities_for_01Jan2020_to_13Apr2026.xlsx"
 ```
 
 ---

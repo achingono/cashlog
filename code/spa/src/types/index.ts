@@ -49,18 +49,23 @@ export interface TransactionFilterCategory extends CategoryRef {
   count: number;
 }
 
-export type TransactionImportFormat = 'csv' | 'ofx' | 'qfx';
+export type TransactionImportFormat = 'csv' | 'ofx' | 'qfx' | 'xlsx';
 
 export interface TransactionImportResult {
   format: TransactionImportFormat;
   parsedCount: number;
   importedCount: number;
   skippedCount: number;
-  account: {
+  account?: {
     id: string;
     name: string;
     created: boolean;
   };
+  accounts: Array<{
+    id: string;
+    name: string;
+    created: boolean;
+  }>;
   categorizationTriggered: boolean;
 }
 

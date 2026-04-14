@@ -45,17 +45,8 @@ const importBodySchema = z
     ),
     format: z.preprocess(
       (value) => (typeof value === 'string' ? value.toLowerCase() : value),
-      z.enum(['ofx', 'qfx', 'csv']).optional(),
+      z.enum(['ofx', 'qfx', 'csv', 'xlsx']).optional(),
     ),
-  })
-  .superRefine((data, ctx) => {
-    if (!data.accountId && !data.accountName) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['accountName'],
-        message: 'accountId is required for existing accounts, or accountName is required to create a new account',
-      });
-    }
   });
 
 router.get('/', validate(querySchema, 'query'), async (req, res, next) => {
@@ -112,7 +103,7 @@ router.post('/import', (req, res, next) => {
         fileName: req.file.originalname || 'import.dat',
         format: body.format,
         accountId: body.accountId,
-        newAccount: body.accountId
+        newAccount: body.accountId || !body.accountName
           ? undefined
           : {
               name: body.accountName!,

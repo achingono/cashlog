@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as XLSX from 'xlsx';
 import { parseTransactionImportFile } from './parsers';
 
 describe('transaction import parsers', () => {
@@ -85,5 +86,80 @@ describe('transaction import parsers', () => {
 
   it('throws for unsupported extensions', () => {
     expect(() => parseTransactionImportFile(Buffer.from('abc'), 'statement.txt')).toThrow(/Unsupported file extension/i);
+  });
+
+  it('parses XLSX transaction files with per-row account metadata', () => {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet([
+      {
+        'Transaction Date': '2026-04-01 12:00:00 AM',
+        'Settlement Date': '2026-04-01 12:00:00 AM',
+        Action: 'DIV',
+        Symbol: 'VFV',
+        Description: 'Dividend payment',
+        Quantity: '0.00000',
+        Price: '0.00000000',
+        'Gross Amount': '0.00',
+        Commission: '0.00',
+        'Net Amount': '44.93',
+        Currency: 'CAD',
+        'Account #': '52600518',
+        'Activity Type': 'Dividends',
+        'Account Type': 'Individual family RESP',
+      },
+      {
+        'Transaction Date': '2026-04-02 12:00:00 AM',
+        'Settlement Date': '2026-04-02 12:00:00 AM',
+        Action: 'Buy',
+        Symbol: 'NVDA',
+        Description: 'Share purchase',
+        Quantity: '1.00000',
+        Price: '100.00000000',
+        'Gross Amount': '-100.00',
+        Commission: '-4.95',
+        'Net Amount': '-104.95',
+        Currency: 'USD',
+        'Account #': '52516897',
+        'Activity Type': 'Trades',
+        'Account Type': 'Individual RRSP',
+      },
+      {
+        'Transaction Date': '2026-04-03 12:00:00 AM',
+        'Settlement Date': '2026-04-03 12:00:00 AM',
+        Action: 'MGR',
+        Symbol: 'TSLA',
+        Description: 'Zero-value corporate action',
+        Quantity: '1.00000',
+        Price: '0.00000000',
+        'Gross Amount': '0.00',
+        Commission: '0.00',
+        'Net Amount': '0.00',
+        Currency: 'CAD',
+        'Account #': '52516897',
+        'Activity Type': 'Corporate actions',
+        'Account Type': 'Individual RRSP',
+      },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Activities');
+
+    const parsed = parseTransactionImportFile(Buffer.from(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })), 'activities.xlsx');
+
+    expect(parsed.format).toBe('xlsx');
+    expect(parsed.accounts).toHaveLength(2);
+    expect(parsed.transactions).toHaveLength(2);
+    expect(parsed.transactions[0]).toEqual(expect.objectContaining({
+      amount: 44.93,
+      payee: 'VFV',
+      account: expect.objectContaining({
+        externalId: 'excel-import:52600518:CAD',
+        accountType: 'INVESTMENT',
+      }),
+    }));
+    expect(parsed.transactions[1]).toEqual(expect.objectContaining({
+      amount: -104.95,
+      account: expect.objectContaining({
+        externalId: 'excel-import:52516897:USD',
+      }),
+    }));
   });
 });

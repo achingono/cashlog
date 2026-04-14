@@ -50,9 +50,12 @@ export function TransactionsPage() {
   const handleImported = async (result: TransactionImportResult) => {
     await Promise.all([refresh(), loadAccounts(), loadCategories()]);
 
-    const destinationLabel = result.account.created
-      ? `${result.account.name} created`
-      : `${result.account.name} updated`;
+    const createdCount = result.accounts.filter((account) => account.created).length;
+    const destinationLabel = result.accounts.length > 1
+      ? `${result.accounts.length} accounts updated${createdCount > 0 ? ` (${createdCount} created)` : ''}`
+      : result.account
+        ? `${result.account.name} ${result.account.created ? 'created' : 'updated'}`
+        : 'Import completed';
 
     toast.success('Transactions imported', {
       description: `${result.importedCount} added, ${result.skippedCount} skipped from ${result.parsedCount} parsed. ${destinationLabel}.`,

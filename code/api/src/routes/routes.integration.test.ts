@@ -147,6 +147,7 @@ describe('API route integration', () => {
       importedCount: 1,
       skippedCount: 1,
       account: { id: 'a1', name: 'Imported', created: true },
+      accounts: [{ id: 'a1', name: 'Imported', created: true }],
       categorizationTriggered: true,
     });
 
@@ -167,6 +168,7 @@ describe('API route integration', () => {
           importedCount: 1,
           skippedCount: 1,
           account: { id: 'a1', name: 'Imported', created: true },
+          accounts: [{ id: 'a1', name: 'Imported', created: true }],
           categorizationTriggered: true,
         },
       });
@@ -197,8 +199,48 @@ describe('API route integration', () => {
 
     await request(app)
       .post('/api/transactions/import')
-      .field('accountName', 'Imported Account')
       .expect(400);
+
+    importServiceMock.importTransactionsFromFile.mockResolvedValueOnce({
+      format: 'xlsx',
+      parsedCount: 3,
+      importedCount: 3,
+      skippedCount: 0,
+      account: undefined,
+      accounts: [
+        { id: 'a2', name: 'RRSP 52516897 USD', created: true },
+        { id: 'a3', name: 'RESP 52600518 CAD', created: false },
+      ],
+      categorizationTriggered: true,
+    });
+
+    await request(app)
+      .post('/api/transactions/import')
+      .field('format', 'xlsx')
+      .attach('file', Buffer.from('xlsx-binary'), 'activities.xlsx')
+      .expect(201)
+      .expect({
+        data: {
+          format: 'xlsx',
+          parsedCount: 3,
+          importedCount: 3,
+          skippedCount: 0,
+          account: undefined,
+          accounts: [
+            { id: 'a2', name: 'RRSP 52516897 USD', created: true },
+            { id: 'a3', name: 'RESP 52600518 CAD', created: false },
+          ],
+          categorizationTriggered: true,
+        },
+      });
+    expect(importServiceMock.importTransactionsFromFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: 'activities.xlsx',
+        format: 'xlsx',
+        accountId: undefined,
+        newAccount: undefined,
+      }),
+    );
 
     await request(app)
       .post('/api/transactions/import')

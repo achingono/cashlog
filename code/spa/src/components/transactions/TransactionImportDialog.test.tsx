@@ -22,6 +22,11 @@ const importResult: TransactionImportResult = {
     name: 'Checking',
     created: false,
   },
+  accounts: [{
+    id: 'acc-1',
+    name: 'Checking',
+    created: false,
+  }],
   categorizationTriggered: true,
 };
 
@@ -93,6 +98,36 @@ describe('TransactionImportDialog', () => {
         currency: 'EUR',
         accountType: 'CHECKING',
         accountBalance: 1500.45,
+      }),
+    ));
+    await waitFor(() => expect(onImported).toHaveBeenCalledWith(importResult));
+  });
+
+  it('submits an Excel import using accounts discovered from the file', async () => {
+    const user = userEvent.setup();
+    const onImported = vi.fn();
+
+    render(
+      <TransactionImportDialog
+        open
+        accounts={[{ id: 'acc-1', name: 'Checking', institution: 'Bank', type: 'CHECKING', currency: 'USD', balance: 0, availableBalance: null, balanceDate: '2026-01-01T00:00:00.000Z', transactionCount: 0 }]}
+        onClose={vi.fn()}
+        onImported={onImported}
+      />,
+    );
+
+    await user.upload(
+      screen.getByLabelText(/statement file/i),
+      new File(['excel-content'], 'activities.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    );
+    await user.click(screen.getByRole('button', { name: /from file/i }));
+    await user.click(screen.getByRole('button', { name: /import file/i }));
+
+    await waitFor(() => expect(apiMock.importTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: undefined,
+        accountName: undefined,
+        format: undefined,
       }),
     ));
     await waitFor(() => expect(onImported).toHaveBeenCalledWith(importResult));

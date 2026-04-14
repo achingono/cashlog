@@ -1,8 +1,18 @@
 import path from 'path';
 import { parse as parseCsvRecords } from 'csv-parse/sync';
+import * as XLSX from 'xlsx';
 
-export type ImportFormat = 'ofx' | 'qfx' | 'csv';
+export type ImportFormat = 'ofx' | 'qfx' | 'csv' | 'xlsx';
 export type ImportedAccountType = 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'INVESTMENT' | 'LOAN' | 'MORTGAGE' | 'OTHER';
+
+export interface ImportedAccountReference {
+  externalId: string;
+  name: string;
+  institution?: string;
+  currency?: string;
+  accountType?: ImportedAccountType;
+  endingBalance?: number;
+}
 
 export interface ImportedTransactionRecord {
   posted: Date;
@@ -11,6 +21,7 @@ export interface ImportedTransactionRecord {
   payee: string | null;
   memo: string | null;
   sourceId?: string;
+  account?: ImportedAccountReference;
 }
 
 export interface ParsedTransactionFile {
@@ -20,6 +31,7 @@ export interface ParsedTransactionFile {
   currency?: string;
   accountType?: ImportedAccountType;
   endingBalance?: number;
+  accounts?: ImportedAccountReference[];
   transactions: ImportedTransactionRecord[];
 }
 
@@ -68,6 +80,11 @@ function parseFlexibleDate(raw: string): Date {
   return parsed;
 }
 
+function normalizeCurrency(value: string | undefined): string | undefined {
+  const candidate = value?.trim().toUpperCase();
+  return candidate && /^[A-Z]{3}$/.test(candidate) ? candidate : undefined;
+}
+
 function parseOfxDate(raw: string): Date {
   const digits = raw.replace(/[^\d]/g, '');
   if (digits.length < 8) {
@@ -107,6 +124,68 @@ function rowValue(row: Record<string, string>, aliases: string[]): string | unde
     if (value) return value;
   }
   return undefined;
+}
+
+function parseExcelDate(raw: unknown): Date {
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return raw;
+  }
+
+  if (typeof raw === 'number') {
+    const parsed = XLSX.SSF.parse_date_code(raw);
+    if (!parsed) {
+      throw new Error(`Invalid Excel date value: "${raw}"`);
+    }
+    return new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H ?? 0, parsed.M ?? 0, parsed.S ?? 0));
+  }
+
+  return parseFlexibleDate(String(raw));
+}
+
+function mapExcelAccountType(raw: string | undefined): ImportedAccountType | undefined {
+  const normalized = normalizeHeader(raw ?? '');
+  if (!normalized) return undefined;
+  if (normalized.includes('checking')) return 'CHECKING';
+  if (normalized.includes('saving')) return 'SAVINGS';
+  if (normalized.includes('credit')) return 'CREDIT_CARD';
+  if (normalized.includes('mortgage')) return 'MORTGAGE';
+  if (normalized.includes('loan')) return 'LOAN';
+  if (normalized.includes('rrsp') || normalized.includes('resp') || normalized.includes('tfsa') || normalized.includes('investment') || normalized.includes('brokerage')) {
+    return 'INVESTMENT';
+  }
+  return 'OTHER';
+}
+
+function buildExcelAccountReference(row: Record<string, string>): ImportedAccountReference | undefined {
+  const accountNumber = rowValue(row, ['account #', 'account number', 'account']);
+  if (!accountNumber) return undefined;
+
+  const currency = normalizeCurrency(rowValue(row, ['currency'])) ?? 'USD';
+  const accountTypeLabel = rowValue(row, ['account type']) ?? 'Investment Account';
+
+  return {
+    externalId: `excel-import:${accountNumber}:${currency}`,
+    name: `${accountTypeLabel} ${accountNumber} ${currency}`,
+    institution: 'Excel Import',
+    currency,
+    accountType: mapExcelAccountType(accountTypeLabel),
+  };
+}
+
+function buildExcelSourceId(row: Record<string, string>, account: ImportedAccountReference | undefined): string {
+  return [
+    rowValue(row, ['transaction date', 'date']) ?? '',
+    rowValue(row, ['settlement date']) ?? '',
+    rowValue(row, ['action']) ?? '',
+    rowValue(row, ['symbol']) ?? '',
+    rowValue(row, ['description']) ?? '',
+    rowValue(row, ['quantity']) ?? '',
+    rowValue(row, ['price']) ?? '',
+    rowValue(row, ['gross amount']) ?? '',
+    rowValue(row, ['commission']) ?? '',
+    rowValue(row, ['net amount']) ?? '',
+    account?.externalId ?? '',
+  ].join('|');
 }
 
 function parseCsvTransactionFile(content: Buffer): ParsedTransactionFile {
@@ -156,6 +235,65 @@ function parseCsvTransactionFile(content: Buffer): ParsedTransactionFile {
 
   return {
     format: 'csv',
+    transactions,
+  };
+}
+
+function parseExcelTransactionFile(content: Buffer): ParsedTransactionFile {
+  const workbook = XLSX.read(content, {
+    type: 'buffer',
+    cellDates: true,
+  });
+
+  const transactions: ImportedTransactionRecord[] = [];
+  const accounts = new Map<string, ImportedAccountReference>();
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+
+    const records = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: '',
+      raw: false,
+    });
+
+    for (const record of records) {
+      const row = buildNormalizedRow(record);
+      const dateValue = rowValue(row, ['transaction date', 'settlement date', 'date']);
+      if (!dateValue) continue;
+
+      const amountValue = rowValue(row, ['net amount', 'amount', 'gross amount']);
+      if (!amountValue) continue;
+
+      const amount = parseFlexibleAmount(amountValue);
+      if (amount === 0) continue;
+
+      const account = buildExcelAccountReference(row);
+      if (account) {
+        accounts.set(account.externalId, account);
+      }
+
+      const symbol = rowValue(row, ['symbol']);
+      const action = rowValue(row, ['action']);
+      const activityType = rowValue(row, ['activity type']);
+      const description = rowValue(row, ['description']) ?? symbol ?? activityType ?? action ?? 'Imported transaction';
+      const memoParts = [activityType, action].filter(Boolean);
+
+      transactions.push({
+        posted: parseExcelDate(record['Transaction Date'] ?? record['Settlement Date'] ?? dateValue),
+        amount,
+        description,
+        payee: symbol ?? null,
+        memo: memoParts.length > 0 ? memoParts.join(' - ') : null,
+        sourceId: buildExcelSourceId(row, account),
+        account,
+      });
+    }
+  }
+
+  return {
+    format: 'xlsx',
+    accounts: Array.from(accounts.values()),
     transactions,
   };
 }
@@ -222,10 +360,16 @@ const qfxParser: TransactionFileParser = {
   parse: (content) => parseOfxLikeTransactionFile(content, 'qfx'),
 };
 
+const xlsxParser: TransactionFileParser = {
+  format: 'xlsx',
+  parse: parseExcelTransactionFile,
+};
+
 const parserByFormat: Record<ImportFormat, TransactionFileParser> = {
   csv: csvParser,
   ofx: ofxParser,
   qfx: qfxParser,
+  xlsx: xlsxParser,
 };
 
 function detectFormat(fileName: string, requestedFormat?: ImportFormat): ImportFormat {
@@ -234,7 +378,8 @@ function detectFormat(fileName: string, requestedFormat?: ImportFormat): ImportF
   if (extension === '.csv') return 'csv';
   if (extension === '.ofx') return 'ofx';
   if (extension === '.qfx') return 'qfx';
-  throw new Error(`Unsupported file extension "${extension || 'unknown'}". Supported formats: OFX, QFX, CSV.`);
+  if (extension === '.xlsx' || extension === '.xls') return 'xlsx';
+  throw new Error(`Unsupported file extension "${extension || 'unknown'}". Supported formats: OFX, QFX, CSV, XLSX.`);
 }
 
 export function parseTransactionImportFile(content: Buffer, fileName: string, requestedFormat?: ImportFormat): ParsedTransactionFile {

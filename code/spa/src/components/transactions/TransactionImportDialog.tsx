@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type ImportMode = 'existing' | 'new';
-type ImportFormatOption = 'auto' | 'csv' | 'ofx' | 'qfx';
+type ImportModeOption = ImportMode | 'file';
+type ImportFormatOption = 'auto' | 'csv' | 'ofx' | 'qfx' | 'xlsx';
 
 interface TransactionImportDialogProps {
   open: boolean;
@@ -26,7 +27,7 @@ function getDefaultMode(accounts: Account[]): ImportMode {
 }
 
 export function TransactionImportDialog({ open, accounts, onClose, onImported }: Readonly<TransactionImportDialogProps>) {
-  const [importMode, setImportMode] = useState<ImportMode>(getDefaultMode(accounts));
+  const [importMode, setImportMode] = useState<ImportModeOption>(getDefaultMode(accounts));
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormatOption>('auto');
   const [accountId, setAccountId] = useState<string>('');
@@ -37,6 +38,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
   const [accountBalance, setAccountBalance] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const supportsFileAccounts = format === 'xlsx' || (format === 'auto' && !!file?.name.match(/\.(xlsx|xls)$/i));
 
   const reset = () => {
     setImportMode(getDefaultMode(accounts));
@@ -58,6 +60,12 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
     }
   }, [open, accounts]);
 
+  useEffect(() => {
+    if (!supportsFileAccounts && importMode === 'file') {
+      setImportMode(getDefaultMode(accounts));
+    }
+  }, [accounts, importMode, supportsFileAccounts]);
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       reset();
@@ -69,7 +77,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
     event.preventDefault();
 
     if (!file) {
-      setError('Select a CSV, OFX, or QFX file to import.');
+      setError('Select a CSV, OFX, QFX, or XLSX file to import.');
       return;
     }
 
@@ -113,7 +121,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
         <DialogHeader>
           <DialogTitle>Import Transactions</DialogTitle>
           <DialogDescription>
-            Upload a bank export and import it into an existing account or create a new one from the file metadata.
+            Upload a bank export and import it into an existing account, create a new one, or let Excel account metadata split the import automatically.
           </DialogDescription>
         </DialogHeader>
 
@@ -123,10 +131,10 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
             <Input
               id="transaction-import-file"
               type="file"
-              accept=".csv,.ofx,.qfx"
+              accept=".csv,.ofx,.qfx,.xlsx,.xls"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             />
-            <p className="text-xs text-muted-foreground">Supported formats: CSV, OFX, and QFX. Files are de-duplicated on re-import.</p>
+            <p className="text-xs text-muted-foreground">Supported formats: CSV, OFX, QFX, and Excel. Files are de-duplicated on re-import.</p>
           </div>
 
           <div className="space-y-2">
@@ -140,6 +148,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
                 <SelectItem value="csv">CSV</SelectItem>
                 <SelectItem value="ofx">OFX</SelectItem>
                 <SelectItem value="qfx">QFX</SelectItem>
+                <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -150,7 +159,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
                 <h3 className="text-sm font-medium">Destination</h3>
                 <p className="text-xs text-muted-foreground">Choose an existing account or create one as part of the import.</p>
               </div>
-              <div className="grid grid-cols-2 gap-2 rounded-md bg-muted p-1">
+              <div className={`grid gap-2 rounded-md bg-muted p-1 ${supportsFileAccounts ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <Button
                   type="button"
                   variant={importMode === 'existing' ? 'default' : 'ghost'}
@@ -168,6 +177,16 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
                 >
                   New Account
                 </Button>
+                {supportsFileAccounts && (
+                  <Button
+                    type="button"
+                    variant={importMode === 'file' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setImportMode('file')}
+                  >
+                    From File
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -190,7 +209,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
                   <p className="text-xs text-muted-foreground">No accounts are available yet, so this import will create one.</p>
                 )}
               </div>
-            ) : (
+            ) : importMode === 'new' ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="transaction-import-account-name">Account Name</Label>
@@ -248,6 +267,10 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
                     placeholder="Optional"
                   />
                 </div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                Excel account and currency columns will be used to match or create separate destination accounts automatically.
               </div>
             )}
           </div>

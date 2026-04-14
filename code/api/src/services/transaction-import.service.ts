@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { triggerTransactionCategorization } from './categorization.service';
 import {
   ImportFormat,
+  ImportedAccountReference,
   ImportedAccountType,
   ImportedTransactionRecord,
   parseTransactionImportFile,
@@ -30,11 +31,16 @@ export interface ImportTransactionsResult {
   parsedCount: number;
   importedCount: number;
   skippedCount: number;
-  account: {
+  account?: {
     id: string;
     name: string;
     created: boolean;
   };
+  accounts: Array<{
+    id: string;
+    name: string;
+    created: boolean;
+  }>;
   categorizationTriggered: boolean;
 }
 
@@ -85,6 +91,17 @@ function mapImportedAccountType(value: ImportedAccountType | undefined): Support
   return value;
 }
 
+function mostRecentTransactionDate(transactions: ImportedTransactionRecord[]): Date {
+  return transactions.reduce<Date>(
+    (latest, transaction) => (transaction.posted > latest ? transaction.posted : latest),
+    new Date(0),
+  );
+}
+
+function computedBalanceForTransactions(transactions: ImportedTransactionRecord[]): number {
+  return normalizeAmount(transactions.reduce((sum, transaction) => sum + transaction.amount, 0));
+}
+
 async function resolveAccount(input: ImportTransactionsInput, parsedTransactions: ImportedTransactionRecord[], parsedMeta: {
   accountName?: string;
   institution?: string;
@@ -111,11 +128,8 @@ async function resolveAccount(input: ImportTransactionsInput, parsedTransactions
     throw new AppError(400, 'Either accountId or newAccount.name is required', 'VALIDATION_ERROR');
   }
 
-  const mostRecentPosted = parsedTransactions.reduce<Date>(
-    (latest, transaction) => (transaction.posted > latest ? transaction.posted : latest),
-    new Date(0),
-  );
-  const computedBalance = normalizeAmount(parsedTransactions.reduce((sum, transaction) => sum + transaction.amount, 0));
+  const mostRecentPosted = mostRecentTransactionDate(parsedTransactions);
+  const computedBalance = computedBalanceForTransactions(parsedTransactions);
   const startingBalance = typeof input.newAccount.balance === 'number'
     ? normalizeAmount(input.newAccount.balance)
     : parsedMeta.endingBalance ?? computedBalance;
@@ -127,6 +141,45 @@ async function resolveAccount(input: ImportTransactionsInput, parsedTransactions
       institution: input.newAccount.institution ?? parsedMeta.institution ?? null,
       currency: normalizeCurrency(input.newAccount.currency ?? parsedMeta.currency),
       type: input.newAccount.type ?? mapImportedAccountType(parsedMeta.accountType) ?? 'CHECKING',
+      balance: startingBalance,
+      availableBalance: null,
+      balanceDate: mostRecentPosted.getTime() > 0 ? mostRecentPosted : new Date(),
+      isActive: true,
+    },
+    select: { id: true, name: true },
+  });
+
+  return {
+    id: created.id,
+    name: created.name,
+    created: true,
+  };
+}
+
+async function resolveImportedSourceAccount(parsedAccount: ImportedAccountReference, transactions: ImportedTransactionRecord[]): Promise<ResolvedAccount> {
+  const existing = await prisma.account.findUnique({
+    where: { externalId: parsedAccount.externalId },
+    select: { id: true, name: true },
+  });
+
+  if (existing) {
+    return {
+      id: existing.id,
+      name: existing.name,
+      created: false,
+    };
+  }
+
+  const mostRecentPosted = mostRecentTransactionDate(transactions);
+  const startingBalance = parsedAccount.endingBalance ?? computedBalanceForTransactions(transactions);
+
+  const created = await prisma.account.create({
+    data: {
+      externalId: parsedAccount.externalId,
+      name: parsedAccount.name,
+      institution: parsedAccount.institution ?? null,
+      currency: normalizeCurrency(parsedAccount.currency),
+      type: mapImportedAccountType(parsedAccount.accountType) ?? 'OTHER',
       balance: startingBalance,
       availableBalance: null,
       balanceDate: mostRecentPosted.getTime() > 0 ? mostRecentPosted : new Date(),
@@ -181,30 +234,13 @@ function prepareImportRecords(
   return prepared;
 }
 
-export async function importTransactionsFromFile(input: ImportTransactionsInput): Promise<ImportTransactionsResult> {
-  if (!input.fileBuffer.length) {
-    throw new AppError(400, 'Import file is empty', 'VALIDATION_ERROR');
-  }
-
-  let parsed: ReturnType<typeof parseTransactionImportFile>;
-  try {
-    parsed = parseTransactionImportFile(input.fileBuffer, input.fileName, input.format);
-  } catch (err) {
-    if (err instanceof AppError) throw err;
-    throw new AppError(400, err instanceof Error ? err.message : 'Invalid import file', 'VALIDATION_ERROR');
-  }
-  const account = await resolveAccount(input, parsed.transactions, parsed);
-  const prepared = prepareImportRecords(account.id, parsed.format, parsed.transactions);
+async function importPreparedTransactions(account: ResolvedAccount, format: ImportFormat, transactions: ImportedTransactionRecord[]) {
+  const prepared = prepareImportRecords(account.id, format, transactions);
 
   if (prepared.length === 0) {
-    triggerTransactionCategorization([]);
     return {
-      format: parsed.format,
-      parsedCount: parsed.transactions.length,
       importedCount: 0,
-      skippedCount: parsed.transactions.length,
-      account,
-      categorizationTriggered: true,
+      importedTransactionIds: [] as string[],
     };
   }
 
@@ -251,39 +287,104 @@ export async function importTransactionsFromFile(input: ImportTransactionsInput)
     return true;
   });
 
-  let importedCount = 0;
-  let importedTransactionIds: string[] = [];
-  if (toInsert.length > 0) {
-    const creation = await prisma.transaction.createMany({
-      data: toInsert.map((transaction) => ({
-        externalId: transaction.externalId,
-        accountId: account.id,
-        posted: transaction.posted,
-        amount: transaction.amount,
-        description: transaction.description,
-        payee: transaction.payee,
-        memo: transaction.memo,
-        isReviewed: false,
-      })),
-      skipDuplicates: true,
-    });
-    importedCount = creation.count;
+  if (toInsert.length === 0) {
+    return {
+      importedCount: 0,
+      importedTransactionIds: [] as string[],
+    };
+  }
 
-    const insertedRows = await prisma.transaction.findMany({
-      where: { externalId: { in: toInsert.map((transaction) => transaction.externalId) } },
-      select: { id: true },
-    });
-    importedTransactionIds = insertedRows.map((transaction) => transaction.id);
+  const creation = await prisma.transaction.createMany({
+    data: toInsert.map((transaction) => ({
+      externalId: transaction.externalId,
+      accountId: account.id,
+      posted: transaction.posted,
+      amount: transaction.amount,
+      description: transaction.description,
+      payee: transaction.payee,
+      memo: transaction.memo,
+      isReviewed: false,
+    })),
+    skipDuplicates: true,
+  });
+
+  const insertedRows = await prisma.transaction.findMany({
+    where: { externalId: { in: toInsert.map((transaction) => transaction.externalId) } },
+    select: { id: true },
+  });
+
+  return {
+    importedCount: creation.count,
+    importedTransactionIds: insertedRows.map((transaction) => transaction.id),
+  };
+}
+
+export async function importTransactionsFromFile(input: ImportTransactionsInput): Promise<ImportTransactionsResult> {
+  if (!input.fileBuffer.length) {
+    throw new AppError(400, 'Import file is empty', 'VALIDATION_ERROR');
+  }
+
+  let parsed: ReturnType<typeof parseTransactionImportFile>;
+  try {
+    parsed = parseTransactionImportFile(input.fileBuffer, input.fileName, input.format);
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError(400, err instanceof Error ? err.message : 'Invalid import file', 'VALIDATION_ERROR');
+  }
+  const accountGroups = new Map<string, { meta: ImportedAccountReference; transactions: ImportedTransactionRecord[] }>();
+
+  if (!input.accountId && !input.newAccount?.name) {
+    for (const transaction of parsed.transactions) {
+      const accountMeta = transaction.account;
+      if (!accountMeta?.externalId) {
+        throw new AppError(
+          400,
+          'accountId is required for existing accounts, accountName is required to create a new account, or the file must contain account metadata for multi-account import',
+          'VALIDATION_ERROR',
+        );
+      }
+
+      const existingGroup = accountGroups.get(accountMeta.externalId);
+      if (existingGroup) {
+        existingGroup.transactions.push(transaction);
+      } else {
+        accountGroups.set(accountMeta.externalId, { meta: accountMeta, transactions: [transaction] });
+      }
+    }
+  }
+
+  const targets = accountGroups.size > 0
+    ? await Promise.all(
+        Array.from(accountGroups.values()).map(async (group) => ({
+          account: await resolveImportedSourceAccount(group.meta, group.transactions),
+          transactions: group.transactions,
+        })),
+      )
+    : [{
+        account: await resolveAccount(input, parsed.transactions, parsed),
+        transactions: parsed.transactions,
+      }];
+
+  let importedCount = 0;
+  const importedTransactionIds: string[] = [];
+
+  for (const target of targets) {
+    const result = await importPreparedTransactions(target.account, parsed.format, target.transactions);
+    importedCount += result.importedCount;
+    importedTransactionIds.push(...result.importedTransactionIds);
   }
 
   triggerTransactionCategorization(importedTransactionIds);
+
+  const accounts = targets.map((target) => target.account);
 
   return {
     format: parsed.format,
     parsedCount: parsed.transactions.length,
     importedCount,
     skippedCount: parsed.transactions.length - importedCount,
-    account,
+    account: accounts.length === 1 ? accounts[0] : undefined,
+    accounts,
     categorizationTriggered: true,
   };
 }

@@ -130,6 +130,7 @@ describe('transaction-import.service', () => {
       importedCount: 1,
       skippedCount: 2,
       account: { id: 'acc-new', name: 'Imported Checking', created: true },
+      accounts: [{ id: 'acc-new', name: 'Imported Checking', created: true }],
       categorizationTriggered: true,
     });
     expect(prismaMock.account.create).toHaveBeenCalledTimes(1);
@@ -174,6 +175,7 @@ describe('transaction-import.service', () => {
     });
 
     expect(result.account).toEqual({ id: 'acc-existing', name: 'Main Checking', created: false });
+    expect(result.accounts).toEqual([{ id: 'acc-existing', name: 'Main Checking', created: false }]);
     expect(prismaMock.account.create).not.toHaveBeenCalled();
     expect(prismaMock.account.findUnique).toHaveBeenCalledWith({
       where: { id: 'acc-existing' },
@@ -211,8 +213,116 @@ describe('transaction-import.service', () => {
 
     expect(result.importedCount).toBe(0);
     expect(result.skippedCount).toBe(1);
+    expect(result.accounts).toEqual([{ id: 'acc-existing', name: 'Main Checking', created: false }]);
     expect(prismaMock.transaction.createMany).not.toHaveBeenCalled();
     expect(categorizationMock.triggerTransactionCategorization).toHaveBeenCalledWith([]);
+  });
+
+  it('imports XLSX rows across multiple accounts discovered from the file', async () => {
+    parserMock.parseTransactionImportFile.mockReturnValue({
+      format: 'xlsx',
+      transactions: [
+        {
+          posted: new Date('2026-04-01T00:00:00.000Z'),
+          amount: 44.93,
+          description: 'Dividend payment',
+          payee: 'VFV',
+          memo: 'Dividends - DIV',
+          sourceId: 'row-1',
+          account: {
+            externalId: 'excel-import:52600518:CAD',
+            name: 'Individual family RESP 52600518 CAD',
+            institution: 'Excel Import',
+            currency: 'CAD',
+            accountType: 'INVESTMENT',
+          },
+        },
+        {
+          posted: new Date('2026-04-02T00:00:00.000Z'),
+          amount: -104.95,
+          description: 'Share purchase',
+          payee: 'NVDA',
+          memo: 'Trades - Buy',
+          sourceId: 'row-2',
+          account: {
+            externalId: 'excel-import:52516897:USD',
+            name: 'Individual RRSP 52516897 USD',
+            institution: 'Excel Import',
+            currency: 'USD',
+            accountType: 'INVESTMENT',
+          },
+        },
+      ],
+    });
+
+    prismaMock.account.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    prismaMock.account.create
+      .mockResolvedValueOnce({ id: 'acc-resp', name: 'Individual family RESP 52600518 CAD' })
+      .mockResolvedValueOnce({ id: 'acc-rrsp', name: 'Individual RRSP 52516897 USD' });
+    prismaMock.transaction.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 'tx-resp' }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 'tx-rrsp' }]);
+    prismaMock.transaction.createMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 1 });
+
+    const result = await importTransactionsFromFile({
+      fileBuffer: Buffer.from('xlsx-content', 'utf8'),
+      fileName: 'activities.xlsx',
+    });
+
+    expect(result).toEqual({
+      format: 'xlsx',
+      parsedCount: 2,
+      importedCount: 2,
+      skippedCount: 0,
+      account: undefined,
+      accounts: [
+        { id: 'acc-resp', name: 'Individual family RESP 52600518 CAD', created: true },
+        { id: 'acc-rrsp', name: 'Individual RRSP 52516897 USD', created: true },
+      ],
+      categorizationTriggered: true,
+    });
+    expect(prismaMock.account.findUnique).toHaveBeenNthCalledWith(1, {
+      where: { externalId: 'excel-import:52600518:CAD' },
+      select: { id: true, name: true },
+    });
+    expect(prismaMock.account.findUnique).toHaveBeenNthCalledWith(2, {
+      where: { externalId: 'excel-import:52516897:USD' },
+      select: { id: true, name: true },
+    });
+    expect(categorizationMock.triggerTransactionCategorization).toHaveBeenCalledWith(['tx-resp', 'tx-rrsp']);
+  });
+
+  it('throws validation error when no destination is provided and the file has no account metadata', async () => {
+    parserMock.parseTransactionImportFile.mockReturnValue({
+      format: 'csv',
+      transactions: [
+        {
+          posted: new Date('2026-01-10T00:00:00.000Z'),
+          amount: 20,
+          description: 'Deposit',
+          payee: null,
+          memo: null,
+        },
+      ],
+    });
+
+    await expect(
+      importTransactionsFromFile({
+        fileBuffer: Buffer.from('content', 'utf8'),
+        fileName: 'import.csv',
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+    });
   });
 
   it('throws not found when importing into an unknown existing account', async () => {
