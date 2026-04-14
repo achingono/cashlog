@@ -22,6 +22,7 @@ Aggregate all your bank accounts, track net worth, visualize spending, and get A
 - 📊 **Dashboard** — Net worth hero card, trendline charts, income vs expenses, spending by category donut chart, budget progress bars, and recent transactions
 - 🏦 **Holdings** — Assets vs liabilities summary, accounts grouped by type (Checking, Savings, Credit Card, Investment, Loan, Mortgage), allocation pie chart, and account detail drawer with mini transaction history
 - 💳 **Transactions** — Consolidated list across all accounts with filters (account, date range, category, search), sortable table, color-coded category badges, inline category editing, and server-side pagination
+- 📥 **Transaction Import** — Upload OFX/QFX/CSV exports into an existing account or a newly created account with duplicate detection and automatic categorization trigger
 - 📝 **Reports** — LLM-generated monthly narrative reports with financial grades, highlights, and personalized recommendations
 - ⚙️ **Settings** — SimpleFin sync status, manual sync trigger, sync history, and category management
 - 🔄 **Automatic Sync** — Scheduled imports every 6 hours via SimpleFin

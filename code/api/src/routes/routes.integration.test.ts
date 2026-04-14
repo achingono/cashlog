@@ -26,6 +26,11 @@ const { transactionServiceMock } = vi.hoisted(() => ({
     updateTransactionCategory: vi.fn(),
   },
 }));
+const { importServiceMock } = vi.hoisted(() => ({
+  importServiceMock: {
+    importTransactionsFromFile: vi.fn(),
+  },
+}));
 const { dashboardServiceMock } = vi.hoisted(() => ({
   dashboardServiceMock: {
     getDashboardSummary: vi.fn(),
@@ -88,6 +93,7 @@ const { goalServiceMock } = vi.hoisted(() => ({
 
 vi.mock('../services/account.service', () => accountServiceMock);
 vi.mock('../services/transaction.service', () => transactionServiceMock);
+vi.mock('../services/transaction-import.service', () => importServiceMock);
 vi.mock('../services/dashboard.service', () => dashboardServiceMock);
 vi.mock('../services/holding.service', () => holdingsServiceMock);
 vi.mock('../services/budget.service', () => budgetServiceMock);
@@ -129,11 +135,70 @@ describe('API route integration', () => {
     transactionServiceMock.getTransactions.mockResolvedValue({ data: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
     transactionServiceMock.getTransactionFilterCategories.mockResolvedValue([{ id: 'c1' }]);
     transactionServiceMock.updateTransactionCategory.mockResolvedValue({ id: 't1', categoryId: 'c1' });
+    importServiceMock.importTransactionsFromFile.mockResolvedValue({
+      format: 'csv',
+      parsedCount: 2,
+      importedCount: 1,
+      skippedCount: 1,
+      account: { id: 'a1', name: 'Imported', created: true },
+      categorizationTriggered: true,
+    });
 
     await request(app).get('/api/transactions?search=coffee&page=1&limit=25').expect(200);
     await request(app).get('/api/transactions/filter-categories?search=coffee').expect(200).expect({ data: [{ id: 'c1' }] });
     await request(app).patch('/api/transactions/t1').send({ categoryId: 'c1' }).expect(200);
     await request(app).patch('/api/transactions/t1').send({}).expect(400);
+
+    await request(app)
+      .post('/api/transactions/import')
+      .field('accountName', 'Imported Account')
+      .attach('file', Buffer.from('Date,Amount,Description\n2026-01-01,10,Paycheck\n'), 'import.csv')
+      .expect(201)
+      .expect({
+        data: {
+          format: 'csv',
+          parsedCount: 2,
+          importedCount: 1,
+          skippedCount: 1,
+          account: { id: 'a1', name: 'Imported', created: true },
+          categorizationTriggered: true,
+        },
+      });
+    expect(importServiceMock.importTransactionsFromFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: 'import.csv',
+        accountId: undefined,
+        newAccount: expect.objectContaining({
+          name: 'Imported Account',
+        }),
+      }),
+    );
+
+    await request(app)
+      .post('/api/transactions/import')
+      .field('accountId', 'a1')
+      .field('format', 'CSV')
+      .attach('file', Buffer.from('Date,Amount,Description\n2026-01-01,10,Paycheck\n'), 'import.csv')
+      .expect(201);
+    expect(importServiceMock.importTransactionsFromFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: 'import.csv',
+        accountId: 'a1',
+        format: 'csv',
+        newAccount: undefined,
+      }),
+    );
+
+    await request(app)
+      .post('/api/transactions/import')
+      .field('accountName', 'Imported Account')
+      .expect(400);
+
+    await request(app)
+      .post('/api/transactions/import')
+      .field('accountName', 'Imported Account')
+      .attach('file', Buffer.alloc(15 * 1024 * 1024 + 1, 1), 'too-large.csv')
+      .expect(400);
   });
 
   it('handles dashboard and holdings routes', async () => {

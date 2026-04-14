@@ -412,6 +412,72 @@ curl "http://localhost:3000/api/transactions?categoryId=clx001&startDate=2025-01
 
 ---
 
+#### `POST /api/transactions/import`
+
+Imports transactions from an uploaded institution export file. Supports `CSV`, `OFX`, and `QFX`.
+
+The endpoint de-duplicates transactions (both within the uploaded file and against existing account transactions), writes only new rows, and triggers transaction categorization for newly imported records.
+
+**Request Content Type:** `multipart/form-data`
+
+**Form Fields:**
+
+| Field            | Type   | Required | Description |
+| ---------------- | ------ | -------- | ----------- |
+| `file`           | file   | Yes      | Upload file (`.csv`, `.ofx`, `.qfx`) |
+| `accountId`      | string | Conditionally | Existing account ID to import into. If provided, no new account is created. |
+| `accountName`    | string | Conditionally | Required when `accountId` is omitted. Used to create a new account. |
+| `institution`    | string | No       | New account institution (new account flow only). |
+| `currency`       | string | No       | New account currency (e.g., `USD`) (new account flow only). |
+| `accountType`    | string | No       | New account type (`CHECKING`, `SAVINGS`, `CREDIT_CARD`, `INVESTMENT`, `LOAN`, `MORTGAGE`, `OTHER`). |
+| `accountBalance` | number | No       | Starting balance for the new account. |
+| `format`         | string | No       | Explicit format override: `csv`, `ofx`, or `qfx`. If omitted, format is detected from file extension. |
+
+**Response:**
+
+```json
+{
+  "data": {
+    "format": "csv",
+    "parsedCount": 120,
+    "importedCount": 87,
+    "skippedCount": 33,
+    "account": {
+      "id": "clxacc123",
+      "name": "Primary Checking",
+      "created": false
+    },
+    "categorizationTriggered": true
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Code               | Condition |
+| ------ | ------------------ | --------- |
+| 400    | `VALIDATION_ERROR` | Missing/invalid form fields, missing file, unsupported format |
+| 404    | `NOT_FOUND`        | `accountId` does not match an existing account |
+
+**curl Examples:**
+
+```bash
+# Import to an existing account
+curl -X POST http://localhost:3000/api/transactions/import \
+  -F "accountId=clxacc123" \
+  -F "file=@./statement.ofx"
+
+# Import and create a new account
+curl -X POST http://localhost:3000/api/transactions/import \
+  -F "accountName=Imported Checking" \
+  -F "institution=My Bank" \
+  -F "currency=USD" \
+  -F "accountType=CHECKING" \
+  -F "file=@./transactions.csv"
+```
+
+---
+
 #### `PATCH /api/transactions/:id`
 
 Updates the category of a single transaction and marks it as reviewed.
@@ -1197,6 +1263,7 @@ curl -X POST http://localhost:3000/api/sync/trigger
 | `GET`    | `/api/accounts`                       | List all active accounts           |
 | `GET`    | `/api/accounts/:id`                   | Get account with recent txns       |
 | `GET`    | `/api/transactions`                   | List transactions (paginated)      |
+| `POST`   | `/api/transactions/import`            | Import transactions from file      |
 | `PATCH`  | `/api/transactions/:id`               | Update transaction category        |
 | `GET`    | `/api/holdings`                       | Portfolio overview                 |
 | `GET`    | `/api/holdings/history`               | Historical net-worth snapshots     |
