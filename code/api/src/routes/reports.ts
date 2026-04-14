@@ -1,8 +1,18 @@
 import { Router } from 'express';
 import { getReports, getReportById } from '../services/report.service';
+import { generatePFS } from '../services/pfs.service';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
+
+router.post('/', async (_req, res, next) => {
+  try {
+    const report = await generatePFS();
+    res.status(201).json({ data: report });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/', async (req, res, next) => {
   try {

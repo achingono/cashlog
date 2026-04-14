@@ -64,6 +64,11 @@ const { reportServiceMock } = vi.hoisted(() => ({
     getReportById: vi.fn(),
   },
 }));
+const { pfsServiceMock } = vi.hoisted(() => ({
+  pfsServiceMock: {
+    generatePFS: vi.fn(),
+  },
+}));
 const { syncServiceMock } = vi.hoisted(() => ({
   syncServiceMock: {
     getLatestSync: vi.fn(),
@@ -99,6 +104,7 @@ vi.mock('../services/holding.service', () => holdingsServiceMock);
 vi.mock('../services/budget.service', () => budgetServiceMock);
 vi.mock('../services/category.service', () => categoryServiceMock);
 vi.mock('../services/report.service', () => reportServiceMock);
+vi.mock('../services/pfs.service', () => pfsServiceMock);
 vi.mock('../services/sync.service', () => syncServiceMock);
 vi.mock('../services/asset.service', () => assetServiceMock);
 vi.mock('../services/goal.service', () => goalServiceMock);
@@ -224,6 +230,7 @@ describe('API route integration', () => {
     categoryServiceMock.createCategory.mockResolvedValue({ id: 'c2' });
     reportServiceMock.getReports.mockResolvedValue({ data: [{ id: 'r1' }], pagination: { page: 1, limit: 10, total: 1, totalPages: 1 } });
     reportServiceMock.getReportById.mockResolvedValueOnce({ id: 'r1' }).mockResolvedValueOnce(null);
+    pfsServiceMock.generatePFS.mockResolvedValue({ id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' });
     syncServiceMock.getLatestSync.mockResolvedValue({ id: 's1' });
     syncServiceMock.getSyncHistory.mockResolvedValue([{ id: 's1' }]);
 
@@ -242,6 +249,7 @@ describe('API route integration', () => {
     await request(app).get('/api/reports?page=1&limit=10').expect(200);
     await request(app).get('/api/reports/r1').expect(200);
     await request(app).get('/api/reports/missing').expect(404);
+    await request(app).post('/api/reports').expect(201).expect({ data: { id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' } });
 
     await request(app).get('/api/sync/status').expect(200).expect({ data: { id: 's1' } });
     await request(app).get('/api/sync/history?limit=5').expect(200).expect({ data: [{ id: 's1' }] });

@@ -77,7 +77,7 @@ export interface Report {
   id: string;
   title: string;
   type: string;
-  content: ReportContent;
+  content: ReportContent | PFSContent;
   period: string;
   generatedAt: string;
 }
@@ -92,6 +92,43 @@ export interface ReportContent {
   recommendations: string[];
   overallScore: string;
   scoreExplanation: string;
+}
+
+export interface PFSContent {
+  reportDate: string;
+  periodCovered: string;
+
+  // Page 1: Executive Summary
+  netWorth: number;
+  netWorthChange: { amount: number; percentage: number; comparedTo: string };
+  totalAssets: number;
+  totalLiabilities: number;
+  assetAllocation: Array<{ category: string; value: number; percentage: number }>;
+
+  // Page 2: Statement of Financial Condition
+  assets: Array<{ category: string; value: number; percentOfTotal: number }>;
+  liabilities: Array<{ category: string; value: number; percentOfTotal: number }>;
+
+  // Page 3: CPA Narrative
+  trendAnalysis: string;
+  taxSensitivityAnalysis: string;
+  solvencyBenchmarking: {
+    dtiRatio: number;
+    liquidityRatio: number;
+    savingsRate: number;
+    debtToAssetRatio: number;
+    analysis: string;
+  };
+  debtStrategy: {
+    method: string;
+    analysis: string;
+    priorityOrder: Array<{ name: string; balance: number; rate: number }>;
+  };
+  assetRebalancing: {
+    warnings: string[];
+    suggestions: string[];
+  };
+  overallInsight: string;
 }
 
 export interface DashboardSummary {
