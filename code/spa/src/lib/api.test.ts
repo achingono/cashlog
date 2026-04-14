@@ -93,4 +93,37 @@ describe('api client', () => {
     expect((options.body as FormData).get('accountId')).toBe('acc-1');
     expect((options.body as FormData).get('format')).toBe('csv');
   });
+
+  it('patches account balances as JSON', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        data: {
+          id: 'acc-1',
+          balance: 1250.55,
+          availableBalance: 1200.1,
+          balanceDate: '2026-04-13T00:00:00.000Z',
+        },
+      }),
+    });
+
+    await api.updateAccountBalance('acc-1', {
+      balance: 1250.55,
+      availableBalance: 1200.1,
+      balanceDate: '2026-04-13',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/accounts/acc-1/balance',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          balance: 1250.55,
+          availableBalance: 1200.1,
+          balanceDate: '2026-04-13',
+        }),
+      }),
+    );
+  });
 });

@@ -339,6 +339,73 @@ curl http://localhost:3000/api/accounts/clxabc001
 
 ---
 
+#### `PATCH /api/accounts/:id/balance`
+
+Updates the stored account balance snapshot so holdings and net worth can be reconciled to institution-reported balances after an import.
+
+**Path Parameters:**
+
+| Parameter | Type   | Description |
+| --------- | ------ | ----------- |
+| `id`      | string | Account ID  |
+
+**Request Body:**
+
+| Field              | Type                 | Required | Description                         |
+| ------------------ | -------------------- | -------- | ----------------------------------- |
+| `balance`          | number               | Yes      | Current account balance             |
+| `availableBalance` | number or `null`     | No       | Optional available balance override |
+| `balanceDate`      | ISO 8601 date string | No       | Optional effective balance date     |
+
+**Request Example:**
+
+```json
+{
+  "balance": 12854.77,
+  "availableBalance": 12854.77,
+  "balanceDate": "2026-04-13"
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "id": "clxabc001",
+    "externalId": "ext-chase-checking-001",
+    "name": "Primary Checking",
+    "institution": "Chase",
+    "institutionDomain": "chase.com",
+    "type": "CHECKING",
+    "currency": "USD",
+    "balance": 12854.77,
+    "availableBalance": 12854.77,
+    "balanceDate": "2026-04-13T00:00:00.000Z",
+    "isActive": true,
+    "transactionCount": 142,
+    "recentTransactions": []
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Code               | Condition                  |
+| ------ | ------------------ | -------------------------- |
+| 400    | `VALIDATION_ERROR` | Invalid numeric/date input |
+| 404    | `NOT_FOUND`        | Account ID not found       |
+
+**curl Example:**
+
+```bash
+curl -X PATCH http://localhost:3000/api/accounts/clxabc001/balance \
+  -H 'Content-Type: application/json' \
+  -d '{"balance":12854.77,"availableBalance":12854.77,"balanceDate":"2026-04-13"}'
+```
+
+---
+
 ### 4. Transactions
 
 #### `GET /api/transactions`

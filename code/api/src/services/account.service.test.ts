@@ -6,13 +6,14 @@ const { prismaMock } = vi.hoisted(() => ({
     account: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
 
 vi.mock('../lib/prisma', () => ({ prisma: prismaMock }));
 
-import { getAccountById, getAllAccounts } from './account.service';
+import { getAccountById, getAllAccounts, updateAccountBalance } from './account.service';
 
 describe('account.service', () => {
   beforeEach(() => {
@@ -91,5 +92,49 @@ describe('account.service', () => {
         ],
       }),
     );
+  });
+
+  it('updates an account balance and returns the refreshed detail', async () => {
+    prismaMock.account.findUnique
+      .mockResolvedValueOnce({ id: 'a1' })
+      .mockResolvedValueOnce({
+        id: 'a1',
+        externalId: 'ext-1',
+        name: 'Checking',
+        institution: 'Bank',
+        institutionDomain: null,
+        type: 'CHECKING',
+        currency: 'USD',
+        balance: new Decimal('150'),
+        availableBalance: new Decimal('140'),
+        balanceDate: new Date('2026-04-14T00:00:00.000Z'),
+        isActive: true,
+        _count: { transactions: 0 },
+        transactions: [],
+      });
+    prismaMock.account.update.mockResolvedValue({ id: 'a1' });
+
+    const result = await updateAccountBalance('a1', {
+      balance: 150,
+      availableBalance: 140,
+      balanceDate: new Date('2026-04-14T00:00:00.000Z'),
+    });
+
+    expect(prismaMock.account.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: {
+        balance: 150,
+        availableBalance: 140,
+        balanceDate: new Date('2026-04-14T00:00:00.000Z'),
+      },
+    });
+    expect(result).toEqual(expect.objectContaining({ id: 'a1', balance: 150, availableBalance: 140 }));
+  });
+
+  it('returns null when updating a missing account balance', async () => {
+    prismaMock.account.findUnique.mockResolvedValue(null);
+
+    await expect(updateAccountBalance('missing', { balance: 10 })).resolves.toBeNull();
+    expect(prismaMock.account.update).not.toHaveBeenCalled();
   });
 });

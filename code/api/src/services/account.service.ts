@@ -1,6 +1,12 @@
 import { prisma } from '../lib/prisma';
 import { decimalToNumber, AccountWithStats } from '../lib/types';
 
+interface UpdateAccountBalanceInput {
+  balance: number;
+  availableBalance?: number | null;
+  balanceDate?: Date;
+}
+
 export async function getAllAccounts(): Promise<AccountWithStats[]> {
   const accounts = await prisma.account.findMany({
     where: { isActive: true },
@@ -60,4 +66,24 @@ export async function getAccountById(id: string) {
       category: t.category ? { id: t.category.id, name: t.category.name, icon: t.category.icon, color: t.category.color } : null,
     })),
   };
+}
+
+export async function updateAccountBalance(id: string, input: UpdateAccountBalanceInput) {
+  const existing = await prisma.account.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!existing) return null;
+
+  await prisma.account.update({
+    where: { id },
+    data: {
+      balance: input.balance,
+      availableBalance: input.availableBalance === undefined ? undefined : input.availableBalance,
+      balanceDate: input.balanceDate ?? new Date(),
+    },
+  });
+
+  return getAccountById(id);
 }

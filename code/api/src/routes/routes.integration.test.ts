@@ -17,6 +17,7 @@ const { accountServiceMock } = vi.hoisted(() => ({
   accountServiceMock: {
     getAllAccounts: vi.fn(),
     getAccountById: vi.fn(),
+    updateAccountBalance: vi.fn(),
   },
 }));
 const { transactionServiceMock } = vi.hoisted(() => ({
@@ -131,9 +132,13 @@ describe('API route integration', () => {
   it('handles account routes including not found', async () => {
     accountServiceMock.getAllAccounts.mockResolvedValue([{ id: 'a1' }]);
     accountServiceMock.getAccountById.mockResolvedValueOnce({ id: 'a1' }).mockResolvedValueOnce(null);
+    accountServiceMock.updateAccountBalance.mockResolvedValueOnce({ id: 'a1', balance: 100 }).mockResolvedValueOnce(null);
 
     await request(app).get('/api/accounts').expect(200).expect({ data: [{ id: 'a1' }] });
     await request(app).get('/api/accounts/a1').expect(200).expect({ data: { id: 'a1' } });
+    await request(app).patch('/api/accounts/a1/balance').send({ balance: 100, availableBalance: null, balanceDate: '2026-04-14T00:00:00.000Z' }).expect(200).expect({ data: { id: 'a1', balance: 100 } });
+    await request(app).patch('/api/accounts/a1/balance').send({}).expect(400);
+    await request(app).patch('/api/accounts/missing/balance').send({ balance: 100 }).expect(404);
     await request(app).get('/api/accounts/missing').expect(404);
   });
 

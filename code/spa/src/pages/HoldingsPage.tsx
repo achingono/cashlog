@@ -11,13 +11,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/formatters";
 import { ACCOUNT_TYPE_LABELS, ASSET_TYPES, LIABILITY_TYPES } from "@/types";
+import { toast } from "sonner";
 
 const SUMMARY_SKELETON_KEYS = ['holdings-summary-1', 'holdings-summary-2', 'holdings-summary-3'] as const;
 
 export function HoldingsPage() {
   const [period, setPeriod] = useState("all");
-  const { holdings, history, loading, error } = useHoldings(period);
+  const { holdings, history, loading, error, refresh } = useHoldings(period);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+
+  const handleAccountBalanceAdjusted = async () => {
+    try {
+      await refresh();
+      toast.success('Account balance updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to refresh holdings');
+    }
+  };
 
   if (error) {
     return <div className="flex items-center justify-center h-[50vh]"><p className="text-muted-foreground">Failed to load: {error}</p></div>;
@@ -135,6 +145,7 @@ export function HoldingsPage() {
         accountId={selectedAccountId}
         open={selectedAccountId !== null}
         onClose={() => setSelectedAccountId(null)}
+        onBalanceAdjusted={handleAccountBalanceAdjusted}
       />
     </div>
   );

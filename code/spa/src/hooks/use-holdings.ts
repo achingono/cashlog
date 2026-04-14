@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import type { HoldingsSummary, TrendDataPoint } from '../types';
 
@@ -8,21 +8,26 @@ export function useHoldings(period: string = 'all') {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    Promise.all([
+    try {
+      const [holdingsRes, historyRes] = await Promise.all([
       api.getHoldings(),
       api.getHoldingsHistory(period),
-    ])
-      .then(([holdingsRes, historyRes]) => {
-        setHoldings(holdingsRes.data);
-        setHistory(historyRes.data);
-
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+      ]);
+      setHoldings(holdingsRes.data);
+      setHistory(historyRes.data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [period]);
 
-  return { holdings, history, loading, error };
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { holdings, history, loading, error, refresh };
 }

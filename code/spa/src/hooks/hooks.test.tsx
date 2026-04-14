@@ -174,6 +174,29 @@ describe('SPA hooks', () => {
     expect(result.current.history).toEqual([{ date: '2026-01-01', value: 1800 }]);
   });
 
+  it('useHoldings refresh reloads holdings and history', async () => {
+    apiMock.getHoldings
+      .mockResolvedValueOnce({ data: { netWorth: 2000 } })
+      .mockResolvedValueOnce({ data: { netWorth: 2450 } });
+    apiMock.getHoldingsHistory
+      .mockResolvedValueOnce({ data: [{ date: '2026-01-01', value: 1800 }] })
+      .mockResolvedValueOnce({ data: [{ date: '2026-04-13', value: 2450 }] });
+
+    const { result } = renderHook(() => useHoldings('12'));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.holdings).toEqual({ netWorth: 2000 });
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(apiMock.getHoldings).toHaveBeenCalledTimes(2);
+    expect(apiMock.getHoldingsHistory).toHaveBeenCalledTimes(2);
+    expect(result.current.holdings).toEqual({ netWorth: 2450 });
+    expect(result.current.history).toEqual([{ date: '2026-04-13', value: 2450 }]);
+  });
+
   it('useIsMobile responds to current viewport width', async () => {
     let listener: (() => void) | undefined;
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 });

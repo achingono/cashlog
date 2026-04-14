@@ -45,6 +45,14 @@ export const api = {
   // Accounts
   getAccounts: () => request<{ data: import('../types').Account[] }>('/accounts'),
   getAccount: (id: string) => request<{ data: import('../types').AccountDetail }>(`/accounts/${id}`),
+  updateAccountBalance: (id: string, data: {
+    balance: number;
+    availableBalance?: number | null;
+    balanceDate?: string;
+  }) => request<{ data: import('../types').AccountDetail }>(`/accounts/${id}/balance`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
 
   // Transactions
   getTransactions: (params: {
