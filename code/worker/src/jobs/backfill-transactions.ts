@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { fetchTransactionsForAccount } from '../lib/simplefin';
+import { fetchAccounts, fetchTransactionsForAccount } from '../lib/simplefin';
 
 const WINDOW_DAYS = 90;
 
@@ -16,7 +16,7 @@ function shiftDays(date: Date, days: number): Date {
 export async function backfillTransactions(): Promise<void> {
   console.log('[Backfill] Starting account backfill run...');
 
-  const accounts = await prisma.account.findMany({
+  const pendingAccounts = await prisma.account.findMany({
     where: { isActive: true, backfillComplete: false },
     select: {
       id: true,
@@ -26,8 +26,38 @@ export async function backfillTransactions(): Promise<void> {
     },
   });
 
-  if (accounts.length === 0) {
+  if (pendingAccounts.length === 0) {
     console.log('[Backfill] No accounts pending backfill');
+    return;
+  }
+
+  const simpleFinAccounts = fetchAccounts();
+  if (!simpleFinAccounts.ok || !simpleFinAccounts.accounts) {
+    throw new Error(simpleFinAccounts.error?.message || 'Failed to fetch SimpleFin accounts');
+  }
+  const simpleFinAccountIds = new Set(simpleFinAccounts.accounts.map((account) => account.id));
+
+  const accounts = pendingAccounts.filter((account) => simpleFinAccountIds.has(account.externalId));
+  const skippedAccounts = pendingAccounts.filter((account) => !simpleFinAccountIds.has(account.externalId));
+
+  if (skippedAccounts.length > 0) {
+    console.log(
+      `[Backfill] Marking ${skippedAccounts.length} non-SimpleFin account(s) as complete: ${skippedAccounts
+        .map((account) => account.name)
+        .join(', ')}`,
+    );
+    await prisma.account.updateMany({
+      where: { id: { in: skippedAccounts.map((account) => account.id) } },
+      data: {
+        backfillCursor: null,
+        backfillComplete: true,
+        backfillUpdatedAt: new Date(),
+      },
+    });
+  }
+
+  if (accounts.length === 0) {
+    console.log('[Backfill] No SimpleFin accounts pending backfill');
     return;
   }
 
