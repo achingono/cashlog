@@ -97,7 +97,7 @@ export interface Report {
   id: string;
   title: string;
   type: string;
-  content: ReportContent | PFSContent;
+  content: ReportContent | PFSContent | SpendingAnalysisContent;
   period: string;
   generatedAt: string;
 }
@@ -148,6 +148,73 @@ export interface PFSContent {
     warnings: string[];
     suggestions: string[];
   };
+  overallInsight: string;
+}
+
+export interface SpendingAnalysisContent {
+  reportDate: string;
+  periodCovered: string;
+  dataQuality: 'sufficient' | 'insufficient';
+  totalExpenses: number;
+  transactionCount: number;
+  essentialVsDiscretionary: {
+    essential: number;
+    discretionary: number;
+    essentialRatio: number;
+    discretionaryRatio: number;
+  };
+  topRecurringMerchants: Array<{
+    merchant: string;
+    cadence: 'weekly' | 'monthly' | 'annual';
+    monthlyCost: number;
+    annualCost: number;
+    confidence: number;
+    transactionCount: number;
+  }>;
+  subscriptionCandidates: Array<{
+    merchant: string;
+    monthlyCost: number;
+    annualCost: number;
+    confidence: number;
+    rationale: string;
+  }>;
+  insuranceOptimization: {
+    monthlyAverage: number;
+    premiumTrendPercent: number;
+    providerCount: number;
+  };
+  negotiationCandidates: Array<{
+    merchant: string;
+    averageMonthlySpend: number;
+    estimatedMonthlySavings: number;
+    rationale: string;
+  }>;
+  savingsOpportunities: Array<{
+    title: string;
+    description: string;
+    estimatedMonthlySavings: number;
+    estimatedAnnualSavings: number;
+    confidence: 'low' | 'medium' | 'high';
+  }>;
+  overview: string;
+  subscriptionStrategy: {
+    analysis: string;
+    actions: string[];
+  };
+  insuranceStrategy: {
+    analysis: string;
+    actions: string[];
+  };
+  negotiationStrategy: {
+    analysis: string;
+    actions: string[];
+  };
+  prioritizedActionPlan: Array<{
+    priority: number;
+    title: string;
+    why: string;
+    expectedMonthlySavings: number;
+  }>;
   overallInsight: string;
 }
 

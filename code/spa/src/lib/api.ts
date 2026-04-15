@@ -134,6 +134,7 @@ export const api = {
   getReports: (page = 1, limit = 10) => request<import('../types').PaginatedResponse<import('../types').Report>>(`/reports?page=${page}&limit=${limit}`),
   getReport: (id: string) => request<{ data: import('../types').Report }>(`/reports/${id}`),
   generatePFS: () => request<{ data: import('../types').Report }>('/reports', { method: 'POST' }),
+  generateExpenseAnalysis: () => request<{ data: import('../types').Report }>('/reports/expense-analysis', { method: 'POST' }),
 
   // Sync
   getSyncStatus: () => request<{ data: import('../types').SyncStatus | null }>('/sync/status'),

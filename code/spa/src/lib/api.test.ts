@@ -153,4 +153,19 @@ describe('api client', () => {
       }),
     );
   });
+
+  it('posts expense analysis report generation', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: vi.fn().mockResolvedValue({ data: { id: 'r-exp', type: 'SPENDING_ANALYSIS' } }),
+    });
+
+    await api.generateExpenseAnalysis();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/reports/expense-analysis',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

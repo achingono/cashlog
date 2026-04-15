@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TransactionImportDialog } from './TransactionImportDialog';
@@ -55,7 +55,8 @@ describe('TransactionImportDialog', () => {
     );
 
     await user.click(screen.getByRole('combobox', { name: /account/i }));
-    await user.click(await screen.findByText('Checking (Bank)'));
+    const listbox = await screen.findByRole('listbox');
+    await user.click(within(listbox).getByRole('option', { name: 'Checking (Bank)' }));
     await user.click(screen.getByRole('button', { name: /import file/i }));
 
     await waitFor(() => expect(apiMock.importTransactions).toHaveBeenCalledWith(
@@ -82,22 +83,19 @@ describe('TransactionImportDialog', () => {
 
     await user.upload(
       screen.getByLabelText(/statement file/i),
-      new File(['<OFX></OFX>'], 'statement.ofx', { type: 'application/octet-stream' }),
+      new File(['Date,Amount,Description\n2026-01-01,12.30,Coffee\n'], 'statement.csv', { type: 'text/csv' }),
     );
+    await user.click(screen.getByRole('button', { name: /new account/i }));
     await user.type(screen.getByLabelText(/account name/i), 'Imported Checking');
-    await user.type(screen.getByLabelText(/institution/i), 'Bank');
-    await user.clear(screen.getByLabelText(/currency/i));
-    await user.type(screen.getByLabelText(/currency/i), 'eur');
-    await user.type(screen.getByLabelText(/starting balance/i), '1500.45');
     await user.click(screen.getByRole('button', { name: /import file/i }));
 
     await waitFor(() => expect(apiMock.importTransactions).toHaveBeenCalledWith(
       expect.objectContaining({
         accountName: 'Imported Checking',
-        institution: 'Bank',
-        currency: 'EUR',
+        institution: undefined,
+        currency: 'USD',
         accountType: 'CHECKING',
-        accountBalance: 1500.45,
+        accountBalance: undefined,
       }),
     ));
     await waitFor(() => expect(onImported).toHaveBeenCalledWith(importResult));

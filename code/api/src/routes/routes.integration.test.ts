@@ -18,6 +18,7 @@ const { accountServiceMock } = vi.hoisted(() => ({
     getAllAccounts: vi.fn(),
     getAccountById: vi.fn(),
     updateAccountBalance: vi.fn(),
+    updateImportedAccountInstitution: vi.fn(),
   },
 }));
 const { transactionServiceMock } = vi.hoisted(() => ({
@@ -70,6 +71,11 @@ const { pfsServiceMock } = vi.hoisted(() => ({
     generatePFS: vi.fn(),
   },
 }));
+const { expenseAnalysisServiceMock } = vi.hoisted(() => ({
+  expenseAnalysisServiceMock: {
+    generateExpenseAnalysis: vi.fn(),
+  },
+}));
 const { syncServiceMock } = vi.hoisted(() => ({
   syncServiceMock: {
     getLatestSync: vi.fn(),
@@ -106,6 +112,7 @@ vi.mock('../services/budget.service', () => budgetServiceMock);
 vi.mock('../services/category.service', () => categoryServiceMock);
 vi.mock('../services/report.service', () => reportServiceMock);
 vi.mock('../services/pfs.service', () => pfsServiceMock);
+vi.mock('../services/expense-analysis.service', () => expenseAnalysisServiceMock);
 vi.mock('../services/sync.service', () => syncServiceMock);
 vi.mock('../services/asset.service', () => assetServiceMock);
 vi.mock('../services/goal.service', () => goalServiceMock);
@@ -133,12 +140,16 @@ describe('API route integration', () => {
     accountServiceMock.getAllAccounts.mockResolvedValue([{ id: 'a1' }]);
     accountServiceMock.getAccountById.mockResolvedValueOnce({ id: 'a1' }).mockResolvedValueOnce(null);
     accountServiceMock.updateAccountBalance.mockResolvedValueOnce({ id: 'a1', balance: 100 }).mockResolvedValueOnce(null);
+    accountServiceMock.updateImportedAccountInstitution.mockResolvedValueOnce({ id: 'a1', institution: 'Excel Import' }).mockResolvedValueOnce(null);
 
     await request(app).get('/api/accounts').expect(200).expect({ data: [{ id: 'a1' }] });
     await request(app).get('/api/accounts/a1').expect(200).expect({ data: { id: 'a1' } });
     await request(app).patch('/api/accounts/a1/balance').send({ balance: 100, availableBalance: null, balanceDate: '2026-04-14T00:00:00.000Z' }).expect(200).expect({ data: { id: 'a1', balance: 100 } });
+    await request(app).patch('/api/accounts/a1/institution').send({ institution: 'Excel Import' }).expect(200).expect({ data: { id: 'a1', institution: 'Excel Import' } });
     await request(app).patch('/api/accounts/a1/balance').send({}).expect(400);
+    await request(app).patch('/api/accounts/a1/institution').send({ institution: '' }).expect(400);
     await request(app).patch('/api/accounts/missing/balance').send({ balance: 100 }).expect(404);
+    await request(app).patch('/api/accounts/missing/institution').send({ institution: 'Any' }).expect(404);
     await request(app).get('/api/accounts/missing').expect(404);
   });
 
@@ -230,7 +241,6 @@ describe('API route integration', () => {
           parsedCount: 3,
           importedCount: 3,
           skippedCount: 0,
-          account: undefined,
           accounts: [
             { id: 'a2', name: 'RRSP 52516897 USD', created: true },
             { id: 'a3', name: 'RESP 52600518 CAD', created: false },
@@ -278,6 +288,7 @@ describe('API route integration', () => {
     reportServiceMock.getReports.mockResolvedValue({ data: [{ id: 'r1' }], pagination: { page: 1, limit: 10, total: 1, totalPages: 1 } });
     reportServiceMock.getReportById.mockResolvedValueOnce({ id: 'r1' }).mockResolvedValueOnce(null);
     pfsServiceMock.generatePFS.mockResolvedValue({ id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' });
+    expenseAnalysisServiceMock.generateExpenseAnalysis.mockResolvedValue({ id: 'sea1', type: 'SPENDING_ANALYSIS' });
     syncServiceMock.getLatestSync.mockResolvedValue({ id: 's1' });
     syncServiceMock.getSyncHistory.mockResolvedValue([{ id: 's1' }]);
 
@@ -297,6 +308,7 @@ describe('API route integration', () => {
     await request(app).get('/api/reports/r1').expect(200);
     await request(app).get('/api/reports/missing').expect(404);
     await request(app).post('/api/reports').expect(201).expect({ data: { id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' } });
+    await request(app).post('/api/reports/expense-analysis').expect(201).expect({ data: { id: 'sea1', type: 'SPENDING_ANALYSIS' } });
 
     await request(app).get('/api/sync/status').expect(200).expect({ data: { id: 's1' } });
     await request(app).get('/api/sync/history?limit=5').expect(200).expect({ data: [{ id: 's1' }] });

@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma';
 import openai, { getMissingAzureOpenAIConfig } from '../lib/openai';
 import { decimalToNumber } from '../lib/types';
 import { buildPFSPrompt } from '../prompts/pfs';
-import type { Prisma } from '@prisma/client';
+import { ReportType, type Prisma } from '@prisma/client';
 
 const ASSET_ACCOUNT_TYPES = new Set(['CHECKING', 'SAVINGS', 'INVESTMENT', 'OTHER']);
 const LIABILITY_ACCOUNT_TYPES = new Set(['CREDIT_CARD', 'LOAN', 'MORTGAGE']);
@@ -315,7 +315,7 @@ export async function generatePFS(): Promise<any> {
   const report = await prisma.report.create({
     data: {
       title: `Personal Financial Statement - ${periodStr}`,
-      type: 'PERSONAL_FINANCIAL_STATEMENT',
+      type: ReportType.PERSONAL_FINANCIAL_STATEMENT,
       content: pfsContent as unknown as Prisma.InputJsonValue,
       period: periodStr,
     },

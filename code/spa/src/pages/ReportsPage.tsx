@@ -4,19 +4,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Star, TrendingUp, Lightbulb, Loader2, FileBarChart } from "lucide-react";
+import { FileText, Star, TrendingUp, Lightbulb, Loader2, FileBarChart, Scissors, Shield, HandCoins } from "lucide-react";
 import { api } from "@/lib/api";
-import { formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { PFSExecutiveSummary } from "@/components/reports/PFSExecutiveSummary";
 import { PFSFinancialCondition } from "@/components/reports/PFSFinancialCondition";
 import { PFSNarrative } from "@/components/reports/PFSNarrative";
 import { PFSExportButton } from "@/components/reports/PFSExportButton";
-import type { Report, PFSContent, ReportContent } from "@/types";
+import type { Report, PFSContent, ReportContent, SpendingAnalysisContent } from "@/types";
 
 const LOADING_CARD_KEYS = ['report-loading-1', 'report-loading-2', 'report-loading-3', 'report-loading-4'] as const;
 
-function isPFSContent(content: ReportContent | PFSContent): content is PFSContent {
+function isPFSContent(content: ReportContent | PFSContent | SpendingAnalysisContent): content is PFSContent {
   return 'netWorth' in content && 'assetAllocation' in content && 'solvencyBenchmarking' in content;
+}
+
+function isSpendingAnalysisContent(content: ReportContent | PFSContent | SpendingAnalysisContent): content is SpendingAnalysisContent {
+  return 'totalExpenses' in content && 'subscriptionCandidates' in content && 'savingsOpportunities' in content;
 }
 
 function PFSDetailView({ report, onBack }: { report: Report; onBack: () => void }) {
@@ -96,11 +100,98 @@ function MonthlyReportDetailView({ report, onBack }: { report: Report; onBack: (
   );
 }
 
+function SpendingAnalysisDetailView({ report, onBack }: { report: Report; onBack: () => void }) {
+  const c = report.content as SpendingAnalysisContent;
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold tracking-tight">{report.title}</h2>
+        <Button variant="ghost" size="sm" onClick={onBack}>← Back to Reports</Button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Total Expenses</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">{formatCurrency(c.totalExpenses)}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Transactions</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold">{c.transactionCount}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Data Quality</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-semibold capitalize">{c.dataQuality}</CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>Overview</CardTitle></CardHeader>
+        <CardContent><p className="text-sm">{c.overview}</p></CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Scissors className="h-4 w-4" /> Subscription Strategy</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm">{c.subscriptionStrategy.analysis}</p>
+            <ul className="space-y-1">{c.subscriptionStrategy.actions.map((item) => <li key={item} className="text-sm text-muted-foreground">• {item}</li>)}</ul>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Shield className="h-4 w-4" /> Insurance Strategy</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm">{c.insuranceStrategy.analysis}</p>
+            <ul className="space-y-1">{c.insuranceStrategy.actions.map((item) => <li key={item} className="text-sm text-muted-foreground">• {item}</li>)}</ul>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><HandCoins className="h-4 w-4" /> Negotiation Strategy</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm">{c.negotiationStrategy.analysis}</p>
+            <ul className="space-y-1">{c.negotiationStrategy.actions.map((item) => <li key={item} className="text-sm text-muted-foreground">• {item}</li>)}</ul>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>Prioritized Action Plan</CardTitle></CardHeader>
+        <CardContent>
+          <ul className="space-y-3">
+            {c.prioritizedActionPlan.map((item) => (
+              <li key={`${item.priority}-${item.title}`} className="rounded border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">{item.priority}. {item.title}</p>
+                  <Badge variant="outline">{formatCurrency(item.expectedMonthlySavings)}/mo</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">{item.why}</p>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Savings Opportunities</CardTitle></CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {c.savingsOpportunities.map((item) => (
+              <li key={item.title} className="text-sm">
+                <span className="font-medium">{item.title}:</span> {formatCurrency(item.estimatedMonthlySavings)}/mo ({formatCurrency(item.estimatedAnnualSavings)}/yr)
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [generatingExpense, setGeneratingExpense] = useState(false);
 
   useEffect(() => {
     api.getReports()
@@ -122,6 +213,19 @@ export function ReportsPage() {
     }
   };
 
+  const handleGenerateExpenseAnalysis = async () => {
+    setGeneratingExpense(true);
+    try {
+      const res = await api.generateExpenseAnalysis();
+      setReports(prev => [res.data, ...prev]);
+      setSelectedReport(res.data);
+    } catch (err) {
+      console.error('Failed to generate expense analysis:', err);
+    } finally {
+      setGeneratingExpense(false);
+    }
+  };
+
   if (loading) {
     return (
         <div className="space-y-6">
@@ -133,8 +237,12 @@ export function ReportsPage() {
 
   if (selectedReport) {
     const isPFS = selectedReport.type === 'PERSONAL_FINANCIAL_STATEMENT' && isPFSContent(selectedReport.content);
+    const isExpenseAnalysis = selectedReport.type === 'SPENDING_ANALYSIS' && isSpendingAnalysisContent(selectedReport.content);
     if (isPFS) {
       return <PFSDetailView report={selectedReport} onBack={() => setSelectedReport(null)} />;
+    }
+    if (isExpenseAnalysis) {
+      return <SpendingAnalysisDetailView report={selectedReport} onBack={() => setSelectedReport(null)} />;
     }
     return <MonthlyReportDetailView report={selectedReport} onBack={() => setSelectedReport(null)} />;
   }
@@ -143,13 +251,22 @@ export function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
-        <Button onClick={handleGeneratePFS} disabled={generating}>
-          {generating ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
-          ) : (
-            <><FileBarChart className="h-4 w-4 mr-2" />Generate Financial Statement</>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleGenerateExpenseAnalysis} disabled={generatingExpense}>
+            {generatingExpense ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
+            ) : (
+              <><TrendingUp className="h-4 w-4 mr-2" />Generate Expense Analysis</>
+            )}
+          </Button>
+          <Button onClick={handleGeneratePFS} disabled={generating}>
+            {generating ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
+            ) : (
+              <><FileBarChart className="h-4 w-4 mr-2" />Generate Financial Statement</>
+            )}
+          </Button>
+        </div>
       </div>
       {reports.length === 0 ? (
         <Card><CardContent className="py-12 text-center"><FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">No reports generated yet. Click "Generate Financial Statement" to create your first Personal Financial Statement, or reports will be automatically created monthly.</p></CardContent></Card>
@@ -157,6 +274,7 @@ export function ReportsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {reports.map(report => {
             const isPFS = report.type === 'PERSONAL_FINANCIAL_STATEMENT' && isPFSContent(report.content);
+            const isExpenseAnalysis = report.type === 'SPENDING_ANALYSIS' && isSpendingAnalysisContent(report.content);
             if (isPFS) {
               const pfsContent = report.content as PFSContent;
               return (
@@ -181,6 +299,39 @@ export function ReportsPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Liabilities</p>
                         <p className="text-sm font-semibold text-red-600">${pfsContent.totalLiabilities.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            if (isExpenseAnalysis) {
+              const expenseContent = report.content as SpendingAnalysisContent;
+              const monthlySavings = expenseContent.savingsOpportunities
+                .reduce((sum, item) => sum + item.estimatedMonthlySavings, 0);
+              return (
+                <Card key={report.id} className="cursor-pointer hover:shadow-md transition-shadow border-amber-500/30" onClick={() => setSelectedReport(report)}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{report.title}</CardTitle>
+                      <Badge variant="secondary">Expense</Badge>
+                    </div>
+                    <CardDescription>{formatDate(report.generatedAt)} · {report.period}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Expenses</p>
+                        <p className="text-sm font-semibold">{formatCurrency(expenseContent.totalExpenses)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Candidates</p>
+                        <p className="text-sm font-semibold">{expenseContent.savingsOpportunities.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Est. Savings</p>
+                        <p className="text-sm font-semibold text-emerald-600">{formatCurrency(monthlySavings)}/mo</p>
                       </div>
                     </div>
                   </CardContent>
