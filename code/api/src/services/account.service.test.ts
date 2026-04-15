@@ -13,7 +13,8 @@ const { prismaMock } = vi.hoisted(() => ({
 
 vi.mock('../lib/prisma', () => ({ prisma: prismaMock }));
 
-import { getAccountById, getAllAccounts, updateAccountBalance } from './account.service';
+import { AppError } from '../middleware/error-handler';
+import { getAccountById, getAllAccounts, updateAccountBalance, updateImportedAccountInstitution } from './account.service';
 
 describe('account.service', () => {
   beforeEach(() => {
@@ -135,6 +136,42 @@ describe('account.service', () => {
     prismaMock.account.findUnique.mockResolvedValue(null);
 
     await expect(updateAccountBalance('missing', { balance: 10 })).resolves.toBeNull();
+    expect(prismaMock.account.update).not.toHaveBeenCalled();
+  });
+
+  it('updates institution for imported accounts', async () => {
+    prismaMock.account.findUnique
+      .mockResolvedValueOnce({ id: 'a1', externalId: 'excel-import:123:CAD' })
+      .mockResolvedValueOnce({
+        id: 'a1',
+        externalId: 'excel-import:123:CAD',
+        name: 'Imported Account',
+        institution: 'Broker A',
+        institutionDomain: null,
+        type: 'INVESTMENT',
+        currency: 'CAD',
+        balance: new Decimal('1000'),
+        availableBalance: null,
+        balanceDate: new Date('2026-04-14T00:00:00.000Z'),
+        isActive: true,
+        _count: { transactions: 0 },
+        transactions: [],
+      });
+    prismaMock.account.update.mockResolvedValue({ id: 'a1' });
+
+    const result = await updateImportedAccountInstitution('a1', { institution: 'Broker A' });
+
+    expect(prismaMock.account.update).toHaveBeenCalledWith({
+      where: { id: 'a1' },
+      data: { institution: 'Broker A' },
+    });
+    expect(result).toEqual(expect.objectContaining({ id: 'a1', institution: 'Broker A' }));
+  });
+
+  it('rejects institution updates for non-imported accounts', async () => {
+    prismaMock.account.findUnique.mockResolvedValue({ id: 'a1', externalId: 'ACT-123' });
+
+    await expect(updateImportedAccountInstitution('a1', { institution: 'Bank X' })).rejects.toBeInstanceOf(AppError);
     expect(prismaMock.account.update).not.toHaveBeenCalled();
   });
 });

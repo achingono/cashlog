@@ -20,10 +20,10 @@ export function HoldingsPage() {
   const { holdings, history, loading, error, refresh } = useHoldings(period);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
-  const handleAccountBalanceAdjusted = async () => {
+  const handleAccountUpdated = async () => {
     try {
       await refresh();
-      toast.success('Account balance updated');
+      toast.success('Account updated');
     } catch (err: any) {
       toast.error(err.message || 'Failed to refresh holdings');
     }
@@ -145,7 +145,7 @@ export function HoldingsPage() {
         accountId={selectedAccountId}
         open={selectedAccountId !== null}
         onClose={() => setSelectedAccountId(null)}
-        onBalanceAdjusted={handleAccountBalanceAdjusted}
+        onAccountUpdated={handleAccountUpdated}
       />
     </div>
   );

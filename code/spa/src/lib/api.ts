@@ -53,6 +53,11 @@ export const api = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+  updateAccountInstitution: (id: string, data: { institution: string }) =>
+    request<{ data: import('../types').AccountDetail }>(`/accounts/${id}/institution`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   // Transactions
   getTransactions: (params: {

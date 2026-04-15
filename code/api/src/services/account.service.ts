@@ -1,10 +1,19 @@
 import { prisma } from '../lib/prisma';
 import { decimalToNumber, AccountWithStats } from '../lib/types';
+import { AppError } from '../middleware/error-handler';
 
 interface UpdateAccountBalanceInput {
   balance: number;
   availableBalance?: number | null;
   balanceDate?: Date;
+}
+
+interface UpdateImportedAccountInstitutionInput {
+  institution: string;
+}
+
+function isImportedAccount(externalId: string): boolean {
+  return externalId.startsWith('manual-import:') || externalId.startsWith('excel-import:');
 }
 
 export async function getAllAccounts(): Promise<AccountWithStats[]> {
@@ -82,6 +91,27 @@ export async function updateAccountBalance(id: string, input: UpdateAccountBalan
       balance: input.balance,
       availableBalance: input.availableBalance === undefined ? undefined : input.availableBalance,
       balanceDate: input.balanceDate ?? new Date(),
+    },
+  });
+
+  return getAccountById(id);
+}
+
+export async function updateImportedAccountInstitution(id: string, input: UpdateImportedAccountInstitutionInput) {
+  const existing = await prisma.account.findUnique({
+    where: { id },
+    select: { id: true, externalId: true },
+  });
+
+  if (!existing) return null;
+  if (!isImportedAccount(existing.externalId)) {
+    throw new AppError(400, 'Only imported accounts can update institution name', 'VALIDATION_ERROR');
+  }
+
+  await prisma.account.update({
+    where: { id },
+    data: {
+      institution: input.institution.trim(),
     },
   });
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z, ZodError } from 'zod';
-import { getAllAccounts, getAccountById, updateAccountBalance } from '../services/account.service';
+import { getAllAccounts, getAccountById, updateAccountBalance, updateImportedAccountInstitution } from '../services/account.service';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
@@ -9,6 +9,10 @@ const balanceUpdateSchema = z.object({
   balance: z.number().finite(),
   availableBalance: z.number().finite().nullable().optional(),
   balanceDate: z.string().datetime().optional(),
+});
+
+const institutionUpdateSchema = z.object({
+  institution: z.string().trim().min(1),
 });
 
 router.get('/', async (_req, res, next) => {
@@ -39,6 +43,34 @@ router.patch('/:id/balance', async (req, res, next) => {
       balance: body.balance,
       availableBalance: body.availableBalance,
       balanceDate: body.balanceDate ? new Date(body.balanceDate) : undefined,
+    });
+
+    if (!account) {
+      throw new AppError(404, 'Account not found', 'NOT_FOUND');
+    }
+
+    res.json({ data: account });
+  } catch (err) {
+    if (err instanceof ZodError) {
+      res.status(400).json({
+        error: {
+          message: 'Validation error',
+          code: 'VALIDATION_ERROR',
+          details: err.errors,
+        },
+      });
+      return;
+    }
+
+    next(err);
+  }
+});
+
+router.patch('/:id/institution', async (req, res, next) => {
+  try {
+    const body = institutionUpdateSchema.parse(req.body);
+    const account = await updateImportedAccountInstitution(req.params.id, {
+      institution: body.institution,
     });
 
     if (!account) {

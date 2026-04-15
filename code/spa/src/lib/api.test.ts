@@ -126,4 +126,31 @@ describe('api client', () => {
       }),
     );
   });
+
+  it('patches imported account institution as JSON', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({
+        data: {
+          id: 'acc-1',
+          institution: 'Excel Import',
+        },
+      }),
+    });
+
+    await api.updateAccountInstitution('acc-1', {
+      institution: 'Excel Import',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/accounts/acc-1/institution',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          institution: 'Excel Import',
+        }),
+      }),
+    );
+  });
 });

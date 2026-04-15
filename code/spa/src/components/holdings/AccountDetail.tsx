@@ -16,20 +16,24 @@ interface AccountDetailProps {
   accountId: string | null;
   open: boolean;
   onClose: () => void;
-  onBalanceAdjusted?: () => Promise<void> | void;
+  onAccountUpdated?: () => Promise<void> | void;
 }
 
 const LOADING_ROW_KEYS = ['account-detail-loading-1', 'account-detail-loading-2', 'account-detail-loading-3', 'account-detail-loading-4', 'account-detail-loading-5'] as const;
 
-export function AccountDetail({ accountId, open, onClose, onBalanceAdjusted }: Readonly<AccountDetailProps>) {
+export function AccountDetail({ accountId, open, onClose, onAccountUpdated }: Readonly<AccountDetailProps>) {
   const [account, setAccount] = useState<AccountDetailType | null>(null);
   const [loading, setLoading] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [institutionOpen, setInstitutionOpen] = useState(false);
   const [balance, setBalance] = useState('');
   const [availableBalance, setAvailableBalance] = useState('');
   const [balanceDate, setBalanceDate] = useState('');
+  const [institutionName, setInstitutionName] = useState('');
   const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [institutionError, setInstitutionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInstitutionSubmitting, setIsInstitutionSubmitting] = useState(false);
 
   const loadAccount = async () => {
     if (!accountId) return;
@@ -82,7 +86,7 @@ export function AccountDetail({ accountId, open, onClose, onBalanceAdjusted }: R
       });
       setAccount(response.data);
       setAdjustOpen(false);
-      await onBalanceAdjusted?.();
+      await onAccountUpdated?.();
       toast.success('Balance adjusted');
     } catch (err: any) {
       setAdjustError(err.message || 'Failed to update balance.');
@@ -90,6 +94,37 @@ export function AccountDetail({ accountId, open, onClose, onBalanceAdjusted }: R
       setIsSubmitting(false);
     }
   };
+
+  const handleInstitutionSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!account) return;
+    const trimmedInstitution = institutionName.trim();
+    if (!trimmedInstitution) {
+      setInstitutionError('Enter an institution name.');
+      return;
+    }
+
+    setInstitutionError(null);
+    setIsInstitutionSubmitting(true);
+    try {
+      const response = await api.updateAccountInstitution(account.id, {
+        institution: trimmedInstitution,
+      });
+      setAccount(response.data);
+      setInstitutionOpen(false);
+      await onAccountUpdated?.();
+      toast.success('Institution updated');
+    } catch (err: any) {
+      setInstitutionError(err.message || 'Failed to update institution.');
+    } finally {
+      setIsInstitutionSubmitting(false);
+    }
+  };
+
+  const canEditInstitution = Boolean(
+    account && (account.externalId.startsWith('manual-import:') || account.externalId.startsWith('excel-import:')),
+  );
 
   return (
     <>
@@ -128,7 +163,19 @@ export function AccountDetail({ accountId, open, onClose, onBalanceAdjusted }: R
               </div>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {canEditInstitution && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setInstitutionName(account.institution ?? '');
+                    setInstitutionError(null);
+                    setInstitutionOpen(true);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" /> Edit Institution
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setAdjustOpen(true)}>
                 <Pencil className="mr-2 h-4 w-4" /> Adjust Balance
               </Button>
@@ -185,6 +232,44 @@ export function AccountDetail({ accountId, open, onClose, onBalanceAdjusted }: R
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setAdjustOpen(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Balance'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={institutionOpen} onOpenChange={setInstitutionOpen}>
+      <DialogContent className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Edit Institution</DialogTitle>
+          <DialogDescription>
+            Update the institution name for this imported account.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleInstitutionSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="account-institution">Institution Name</Label>
+            <Input
+              id="account-institution"
+              value={institutionName}
+              onChange={(event) => setInstitutionName(event.target.value)}
+            />
+          </div>
+          {institutionError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {institutionError}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setInstitutionOpen(false)}
+              disabled={isInstitutionSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isInstitutionSubmitting}>
+              {isInstitutionSubmitting ? 'Saving...' : 'Save Institution'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
