@@ -14,6 +14,9 @@ const { prismaMock } = vi.hoisted(() => ({
     assetValuation: {
       create: vi.fn(),
     },
+    netWorthSnapshot: {
+      updateMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -82,7 +85,7 @@ describe('asset.service', () => {
       type: 'STOCK',
       purchasePrice: new Decimal('1000'),
       currentValue: new Decimal('1200'),
-      purchaseDate: null,
+      purchaseDate: new Date('2026-01-01T14:25:00.000Z'),
       address: null,
       metadata: null,
       lastValuationDate: new Date('2026-01-01T00:00:00.000Z'),
@@ -104,13 +107,28 @@ describe('asset.service', () => {
     });
     prismaMock.asset.delete.mockResolvedValue({ id: 'a2' });
 
-    const created = await createAsset({ name: 'Stock', purchasePrice: 1000, currentValue: 1200, type: 'STOCK' });
+    const created = await createAsset({
+      name: 'Stock',
+      purchasePrice: 1000,
+      currentValue: 1200,
+      type: 'STOCK',
+      purchaseDate: new Date('2026-01-01T14:25:00.000Z'),
+    });
     const updated = await updateAsset('a2', { currentValue: 1300 });
     await deleteAsset('a2');
+    const expectedStartDate = new Date('2026-01-01T14:25:00.000Z');
+    expectedStartDate.setHours(0, 0, 0, 0);
 
     expect(created.currentValue).toBe(1200);
     expect(updated.currentValue).toBe(1300);
     expect(prismaMock.asset.delete).toHaveBeenCalledWith({ where: { id: 'a2' } });
+    expect(prismaMock.netWorthSnapshot.updateMany).toHaveBeenCalledWith({
+      where: { date: { gte: expectedStartDate } },
+      data: {
+        totalAssets: { increment: 1200 },
+        netWorth: { increment: 1200 },
+      },
+    });
   });
 
   it('adds valuation and computes aggregate value', async () => {

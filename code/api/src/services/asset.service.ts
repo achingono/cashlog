@@ -45,6 +45,28 @@ function mapAsset(a: any, includeValuations = false): AssetWithValuations {
   };
 }
 
+function normalizeDate(value: Date): Date {
+  const normalized = new Date(value);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+}
+
+async function recalculateNetWorthSnapshotsForAssetPurchase(assetValue: number, purchaseDate?: Date): Promise<void> {
+  const startDate = normalizeDate(purchaseDate ?? new Date());
+
+  await prisma.netWorthSnapshot.updateMany({
+    where: {
+      date: {
+        gte: startDate,
+      },
+    },
+    data: {
+      totalAssets: { increment: assetValue },
+      netWorth: { increment: assetValue },
+    },
+  });
+}
+
 export async function getAssets(): Promise<AssetWithValuations[]> {
   const assets = await prisma.asset.findMany({
     orderBy: [{ type: 'asc' }, { name: 'asc' }],
@@ -96,6 +118,8 @@ export async function createAsset(data: {
       },
     },
   });
+
+  await recalculateNetWorthSnapshotsForAssetPurchase(decimalToNumber(asset.currentValue), asset.purchaseDate ?? undefined);
 
   return mapAsset(asset);
 }
