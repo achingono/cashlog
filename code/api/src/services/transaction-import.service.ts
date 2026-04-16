@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { AppError } from '../middleware/error-handler';
 import { prisma } from '../lib/prisma';
 import { triggerTransactionCategorization } from './categorization.service';
@@ -56,8 +56,10 @@ type PreparedImportRecord = ImportedTransactionRecord & {
   externalId: string;
 };
 
+type ParsedImportResult = ReturnType<typeof parseTransactionImportFile>;
+
 function normalizeText(value: string | null | undefined): string {
-  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return (value ?? '').trim().toLowerCase().replaceAll(/\s+/g, ' ');
 }
 
 function normalizeAmount(value: number): number {
@@ -94,7 +96,7 @@ function mapImportedAccountType(value: ImportedAccountType | undefined): Support
 
 function mostRecentTransactionDate(transactions: ImportedTransactionRecord[]): Date {
   return transactions.reduce<Date>(
-    (latest, transaction) => (transaction.posted > latest ? transaction.posted : latest),
+    (latest, transaction) => new Date(Math.max(latest.getTime(), transaction.posted.getTime())),
     new Date(0),
   );
 }
@@ -320,6 +322,51 @@ async function importPreparedTransactions(account: ResolvedAccount, format: Impo
   };
 }
 
+function groupTransactionsBySourceAccount(
+  parsed: ParsedImportResult,
+  input: ImportTransactionsInput,
+): Map<string, { meta: ImportedAccountReference; transactions: ImportedTransactionRecord[] }> {
+  const accountGroups = new Map<string, { meta: ImportedAccountReference; transactions: ImportedTransactionRecord[] }>();
+  if (input.accountId || input.newAccount?.name) return accountGroups;
+
+  for (const transaction of parsed.transactions) {
+    const accountMeta = transaction.account;
+    if (!accountMeta?.externalId) {
+      throw new AppError(
+        400,
+        'accountId is required for existing accounts, accountName is required to create a new account, or the file must contain account metadata for multi-account import',
+        'VALIDATION_ERROR',
+      );
+    }
+
+    const existingGroup = accountGroups.get(accountMeta.externalId);
+    if (existingGroup) existingGroup.transactions.push(transaction);
+    else accountGroups.set(accountMeta.externalId, { meta: accountMeta, transactions: [transaction] });
+  }
+
+  return accountGroups;
+}
+
+async function resolveImportTargets(
+  parsed: ParsedImportResult,
+  input: ImportTransactionsInput,
+  accountGroups: Map<string, { meta: ImportedAccountReference; transactions: ImportedTransactionRecord[] }>,
+): Promise<Array<{ account: ResolvedAccount; transactions: ImportedTransactionRecord[] }>> {
+  if (accountGroups.size > 0) {
+    return Promise.all(
+      Array.from(accountGroups.values()).map(async (group) => ({
+        account: await resolveImportedSourceAccount(group.meta, group.transactions),
+        transactions: group.transactions,
+      })),
+    );
+  }
+
+  return [{
+    account: await resolveAccount(input, parsed.transactions, parsed),
+    transactions: parsed.transactions,
+  }];
+}
+
 export async function importTransactionsFromFile(input: ImportTransactionsInput): Promise<ImportTransactionsResult> {
   if (!input.fileBuffer.length) {
     throw new AppError(400, 'Import file is empty', 'VALIDATION_ERROR');
@@ -332,39 +379,8 @@ export async function importTransactionsFromFile(input: ImportTransactionsInput)
     if (err instanceof AppError) throw err;
     throw new AppError(400, err instanceof Error ? err.message : 'Invalid import file', 'VALIDATION_ERROR');
   }
-  const accountGroups = new Map<string, { meta: ImportedAccountReference; transactions: ImportedTransactionRecord[] }>();
-
-  if (!input.accountId && !input.newAccount?.name) {
-    for (const transaction of parsed.transactions) {
-      const accountMeta = transaction.account;
-      if (!accountMeta?.externalId) {
-        throw new AppError(
-          400,
-          'accountId is required for existing accounts, accountName is required to create a new account, or the file must contain account metadata for multi-account import',
-          'VALIDATION_ERROR',
-        );
-      }
-
-      const existingGroup = accountGroups.get(accountMeta.externalId);
-      if (existingGroup) {
-        existingGroup.transactions.push(transaction);
-      } else {
-        accountGroups.set(accountMeta.externalId, { meta: accountMeta, transactions: [transaction] });
-      }
-    }
-  }
-
-  const targets = accountGroups.size > 0
-    ? await Promise.all(
-        Array.from(accountGroups.values()).map(async (group) => ({
-          account: await resolveImportedSourceAccount(group.meta, group.transactions),
-          transactions: group.transactions,
-        })),
-      )
-    : [{
-        account: await resolveAccount(input, parsed.transactions, parsed),
-        transactions: parsed.transactions,
-      }];
+  const accountGroups = groupTransactionsBySourceAccount(parsed, input);
+  const targets = await resolveImportTargets(parsed, input, accountGroups);
 
   let importedCount = 0;
   const importedTransactionIds: string[] = [];

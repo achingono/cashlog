@@ -231,9 +231,9 @@ export async function generatePFS(): Promise<any> {
     const change = current - oldest.netWorth;
     netWorthChange = {
       amount: Math.round(change * 100) / 100,
-      percentage: oldest.netWorth !== 0
-        ? Math.round((change / Math.abs(oldest.netWorth)) * 1000) / 10
-        : 0,
+      percentage: oldest.netWorth === 0
+        ? 0
+        : Math.round((change / Math.abs(oldest.netWorth)) * 1000) / 10,
       comparedTo: oldest.date,
     };
   }

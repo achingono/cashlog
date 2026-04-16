@@ -117,7 +117,7 @@ router.post('/import', (req, res, next) => {
         newAccount: body.accountId || !body.accountName
           ? undefined
           : {
-              name: body.accountName!,
+              name: body.accountName,
               institution: body.institution,
               currency: body.currency,
               type: body.accountType,
@@ -158,7 +158,8 @@ router.patch('/:id', async (req, res, next) => {
 router.get('/:id/recategorize-preview', validate(recategorizePreviewQuerySchema, 'query'), async (req, res, next) => {
   try {
     const { scope } = req.query as unknown as z.infer<typeof recategorizePreviewQuerySchema>;
-    const preview = await getRecategorizePreview(req.params.id as string, scope);
+    const transactionId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const preview = await getRecategorizePreview(transactionId, scope);
     res.json({ data: preview });
   } catch (err) {
     next(err);
@@ -168,7 +169,8 @@ router.get('/:id/recategorize-preview', validate(recategorizePreviewQuerySchema,
 router.post('/:id/recategorize', validate(recategorizeBodySchema), async (req, res, next) => {
   try {
     const { categoryId, scope } = req.body as z.infer<typeof recategorizeBodySchema>;
-    const result = await recategorizeTransaction(req.params.id as string, categoryId, scope);
+    const transactionId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const result = await recategorizeTransaction(transactionId, categoryId, scope);
     res.json({ data: result });
   } catch (err) {
     next(err);

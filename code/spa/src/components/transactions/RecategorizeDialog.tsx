@@ -46,7 +46,7 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
         flattened.push(node);
         return;
       }
-      children.forEach((child) => walk(child as Category));
+      children.forEach(walk);
     };
     categories.forEach(walk);
     return flattened.sort((a, b) => a.name.localeCompare(b.name));

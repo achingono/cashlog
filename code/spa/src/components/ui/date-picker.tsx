@@ -35,6 +35,8 @@ export function DatePicker({
 
   const label = selectedDate ? format(selectedDate, "PPP") : placeholder;
   const currentYear = new Date().getFullYear();
+  const startMonth = useMemo(() => new Date(1900, 0), []);
+  const endMonth = useMemo(() => new Date(currentYear + 10, 11), [currentYear]);
 
   return (
     <div className={cn("flex w-full items-center", className)}>
@@ -66,8 +68,8 @@ export function DatePicker({
             selected={selectedDate}
             defaultMonth={selectedDate}
             captionLayout="dropdown"
-            fromYear={1900}
-            toYear={currentYear + 10}
+            startMonth={startMonth}
+            endMonth={endMonth}
             onSelect={(date) => {
               onChange(date ? format(date, "yyyy-MM-dd") : undefined);
               setOpen(false);

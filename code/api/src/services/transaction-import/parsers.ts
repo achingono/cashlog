@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { parse as parseCsvRecords } from 'csv-parse/sync';
 import * as XLSX from 'xlsx';
 
@@ -54,20 +54,20 @@ const ACCOUNT_TYPE_MAP: Record<string, ImportedAccountType> = {
 
 function nonEmpty(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
+  return trimmed || undefined;
 }
 
 function parseFlexibleAmount(raw: string): number {
   const trimmed = raw.trim();
   const negativeByParens = /^\(.*\)$/.test(trimmed);
   const cleaned = trimmed
-    .replace(/[,$\s]/g, '')
-    .replace(/[()]/g, '')
+    .replaceAll(/[,$\s]/g, '')
+    .replaceAll(/[()]/g, '')
     .replace(/CR$/i, '')
     .replace(/DR$/i, '');
   const amount = Number(cleaned);
   if (Number.isNaN(amount)) {
-    throw new Error(`Invalid amount value: "${raw}"`);
+    throw new TypeError(`Invalid amount value: "${raw}"`);
   }
   return negativeByParens ? -Math.abs(amount) : amount;
 }
@@ -75,7 +75,7 @@ function parseFlexibleAmount(raw: string): number {
 function parseFlexibleDate(raw: string): Date {
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid date value: "${raw}"`);
+    throw new TypeError(`Invalid date value: "${raw}"`);
   }
   return parsed;
 }
@@ -86,7 +86,7 @@ function normalizeCurrency(value: string | undefined): string | undefined {
 }
 
 function parseOfxDate(raw: string): Date {
-  const digits = raw.replace(/[^\d]/g, '');
+  const digits = raw.replaceAll(/[^\d]/g, '');
   if (digits.length < 8) {
     throw new Error(`Invalid OFX date value: "${raw}"`);
   }
@@ -102,18 +102,39 @@ function parseOfxDate(raw: string): Date {
 }
 
 function tagValue(content: string, tagName: string): string | undefined {
-  const match = content.match(new RegExp(`<${tagName}>([^<\\r\\n]+)`, 'i'));
+  const pattern = new RegExp(String.raw`<${tagName}>([^<\r\n]+)`, 'i');
+  const match = pattern.exec(content);
   return nonEmpty(match?.[1]);
 }
 
 function normalizeHeader(header: string): string {
-  return header.trim().toLowerCase().replace(/[\s_-]+/g, '');
+  return header.trim().toLowerCase().replaceAll(/[\s_-]+/g, '');
 }
 
 function buildNormalizedRow(row: Record<string, unknown>): Record<string, string> {
   const normalized: Record<string, string> = {};
   for (const [key, value] of Object.entries(row)) {
-    normalized[normalizeHeader(key)] = String(value ?? '').trim();
+    if (typeof value === 'string') {
+      normalized[normalizeHeader(key)] = value.trim();
+      continue;
+    }
+    if (value == null) {
+      normalized[normalizeHeader(key)] = '';
+      continue;
+    }
+    if (typeof value === 'object') {
+      normalized[normalizeHeader(key)] = JSON.stringify(value).trim();
+      continue;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+      normalized[normalizeHeader(key)] = value.toString().trim();
+      continue;
+    }
+    if (typeof value === 'symbol') {
+      normalized[normalizeHeader(key)] = value.description?.trim() ?? '';
+      continue;
+    }
+    normalized[normalizeHeader(key)] = '';
   }
   return normalized;
 }
@@ -188,6 +209,43 @@ function buildExcelSourceId(row: Record<string, string>, account: ImportedAccoun
   ].join('|');
 }
 
+function resolveCsvAmount(row: Record<string, string>): number | null {
+  const amountValue = rowValue(row, ['amount', 'transaction amount', 'amt']);
+  const debitValue = rowValue(row, ['debit', 'withdrawal', 'withdrawals']);
+  const creditValue = rowValue(row, ['credit', 'deposit', 'deposits']);
+
+  if (amountValue) return parseFlexibleAmount(amountValue);
+
+  const debit = debitValue ? Math.abs(parseFlexibleAmount(debitValue)) : 0;
+  const credit = creditValue ? Math.abs(parseFlexibleAmount(creditValue)) : 0;
+  const amount = credit - debit;
+  if (amount === 0 && !debitValue && !creditValue) return null;
+  return amount;
+}
+
+function parseCsvRecord(record: Record<string, unknown>): ImportedTransactionRecord | null {
+  const row = buildNormalizedRow(record);
+  const dateValue = rowValue(row, ['date', 'posted', 'post date', 'posting date', 'transaction date']);
+  if (!dateValue) return null;
+
+  const amount = resolveCsvAmount(row);
+  if (amount === null) return null;
+
+  const payee = rowValue(row, ['payee', 'merchant']);
+  const memo = rowValue(row, ['memo', 'notes', 'note']);
+  const description = rowValue(row, ['description', 'narration', 'details', 'name']) ?? payee ?? memo ?? 'Imported transaction';
+  const sourceId = rowValue(row, ['id', 'transaction id', 'transactionid', 'fitid', 'reference', 'check number']);
+
+  return {
+    posted: parseFlexibleDate(dateValue),
+    amount,
+    description,
+    payee: payee ?? null,
+    memo: memo ?? null,
+    sourceId,
+  };
+}
+
 function parseCsvTransactionFile(content: Buffer): ParsedTransactionFile {
   const records = parseCsvRecords(content.toString('utf8'), {
     columns: true,
@@ -200,42 +258,47 @@ function parseCsvTransactionFile(content: Buffer): ParsedTransactionFile {
   const transactions: ImportedTransactionRecord[] = [];
 
   for (const record of records) {
-    const row = buildNormalizedRow(record);
-    const dateValue = rowValue(row, ['date', 'posted', 'post date', 'posting date', 'transaction date']);
-    if (!dateValue) continue;
-
-    const amountValue = rowValue(row, ['amount', 'transaction amount', 'amt']);
-    const debitValue = rowValue(row, ['debit', 'withdrawal', 'withdrawals']);
-    const creditValue = rowValue(row, ['credit', 'deposit', 'deposits']);
-
-    let amount: number;
-    if (amountValue) {
-      amount = parseFlexibleAmount(amountValue);
-    } else {
-      const debit = debitValue ? Math.abs(parseFlexibleAmount(debitValue)) : 0;
-      const credit = creditValue ? Math.abs(parseFlexibleAmount(creditValue)) : 0;
-      amount = credit - debit;
-      if (amount === 0 && !debitValue && !creditValue) continue;
+    const parsedRecord = parseCsvRecord(record);
+    if (parsedRecord) {
+      transactions.push(parsedRecord);
     }
-
-    const payee = rowValue(row, ['payee', 'merchant']);
-    const memo = rowValue(row, ['memo', 'notes', 'note']);
-    const description = rowValue(row, ['description', 'narration', 'details', 'name']) ?? payee ?? memo ?? 'Imported transaction';
-    const sourceId = rowValue(row, ['id', 'transaction id', 'transactionid', 'fitid', 'reference', 'check number']);
-
-    transactions.push({
-      posted: parseFlexibleDate(dateValue),
-      amount,
-      description,
-      payee: payee ?? null,
-      memo: memo ?? null,
-      sourceId,
-    });
   }
 
   return {
     format: 'csv',
     transactions,
+  };
+}
+
+function parseExcelRecord(record: Record<string, unknown>) {
+  const row = buildNormalizedRow(record);
+  const dateValue = rowValue(row, ['transaction date', 'settlement date', 'date']);
+  if (!dateValue) return null;
+
+  const amountValue = rowValue(row, ['net amount', 'amount', 'gross amount']);
+  if (!amountValue) return null;
+
+  const amount = parseFlexibleAmount(amountValue);
+  if (amount === 0) return null;
+
+  const account = buildExcelAccountReference(row);
+  const symbol = rowValue(row, ['symbol']);
+  const action = rowValue(row, ['action']);
+  const activityType = rowValue(row, ['activity type']);
+  const description = rowValue(row, ['description']) ?? symbol ?? activityType ?? action ?? 'Imported transaction';
+  const memoParts = [activityType, action].filter(Boolean);
+
+  return {
+    transaction: {
+      posted: parseExcelDate(record['Transaction Date'] ?? record['Settlement Date'] ?? dateValue),
+      amount,
+      description,
+      payee: symbol ?? null,
+      memo: memoParts.length > 0 ? memoParts.join(' - ') : null,
+      sourceId: buildExcelSourceId(row, account),
+      account,
+    } satisfies ImportedTransactionRecord,
+    account,
   };
 }
 
@@ -258,36 +321,12 @@ function parseExcelTransactionFile(content: Buffer): ParsedTransactionFile {
     });
 
     for (const record of records) {
-      const row = buildNormalizedRow(record);
-      const dateValue = rowValue(row, ['transaction date', 'settlement date', 'date']);
-      if (!dateValue) continue;
-
-      const amountValue = rowValue(row, ['net amount', 'amount', 'gross amount']);
-      if (!amountValue) continue;
-
-      const amount = parseFlexibleAmount(amountValue);
-      if (amount === 0) continue;
-
-      const account = buildExcelAccountReference(row);
-      if (account) {
-        accounts.set(account.externalId, account);
+      const parsedRecord = parseExcelRecord(record);
+      if (!parsedRecord) continue;
+      if (parsedRecord.account) {
+        accounts.set(parsedRecord.account.externalId, parsedRecord.account);
       }
-
-      const symbol = rowValue(row, ['symbol']);
-      const action = rowValue(row, ['action']);
-      const activityType = rowValue(row, ['activity type']);
-      const description = rowValue(row, ['description']) ?? symbol ?? activityType ?? action ?? 'Imported transaction';
-      const memoParts = [activityType, action].filter(Boolean);
-
-      transactions.push({
-        posted: parseExcelDate(record['Transaction Date'] ?? record['Settlement Date'] ?? dateValue),
-        amount,
-        description,
-        payee: symbol ?? null,
-        memo: memoParts.length > 0 ? memoParts.join(' - ') : null,
-        sourceId: buildExcelSourceId(row, account),
-        account,
-      });
+      transactions.push(parsedRecord.transaction);
     }
   }
 
@@ -330,7 +369,8 @@ function parseOfxLikeTransactionFile(content: Buffer, format: 'ofx' | 'qfx'): Pa
   const institution = tagValue(ofxContent, 'ORG');
   const currency = tagValue(ofxContent, 'CURDEF');
 
-  const ledgerSection = ofxContent.match(/<LEDGERBAL>[\s\S]*?<\/LEDGERBAL>/i)?.[0] ?? ofxContent;
+  const ledgerMatch = /<LEDGERBAL>[\s\S]*?<\/LEDGERBAL>/i.exec(ofxContent);
+  const ledgerSection = ledgerMatch?.[0] ?? ofxContent;
   const endingBalanceRaw = tagValue(ledgerSection, 'BALAMT');
   const endingBalance = endingBalanceRaw ? parseFlexibleAmount(endingBalanceRaw) : undefined;
 

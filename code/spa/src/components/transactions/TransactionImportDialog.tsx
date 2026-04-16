@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Upload, WandSparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ACCOUNT_TYPE_LABELS, type Account, type AccountType, type TransactionImportResult } from '@/types';
@@ -115,6 +115,97 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
     }
   };
 
+  let destinationContent: ReactNode;
+  if (importMode === 'existing') {
+    destinationContent = (
+      <div className="space-y-2">
+        <Label htmlFor="transaction-import-account">Account</Label>
+        <Select value={accountId || undefined} onValueChange={setAccountId}>
+          <SelectTrigger id="transaction-import-account">
+            <SelectValue placeholder="Select an account" />
+          </SelectTrigger>
+          <SelectContent>
+            {accounts.map((account) => (
+              <SelectItem key={account.id} value={account.id}>
+                {account.name}{account.institution ? ` (${account.institution})` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {accounts.length === 0 && (
+          <p className="text-xs text-muted-foreground">No accounts are available yet, so this import will create one.</p>
+        )}
+      </div>
+    );
+  } else if (importMode === 'new') {
+    destinationContent = (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="transaction-import-account-name">Account Name</Label>
+          <Input
+            id="transaction-import-account-name"
+            value={accountName}
+            onChange={(event) => setAccountName(event.target.value)}
+            placeholder="e.g. Imported Checking"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="transaction-import-institution">Institution</Label>
+          <Input
+            id="transaction-import-institution"
+            value={institution}
+            onChange={(event) => setInstitution(event.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="transaction-import-currency">Currency</Label>
+          <Input
+            id="transaction-import-currency"
+            value={currency}
+            onChange={(event) => setCurrency(event.target.value)}
+            maxLength={3}
+            placeholder="USD"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="transaction-import-account-type">Account Type</Label>
+          <Select value={accountType} onValueChange={(value) => setAccountType(value as AccountType)}>
+            <SelectTrigger id="transaction-import-account-type">
+              <SelectValue placeholder="Select account type" />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_ACCOUNT_TYPES.map((type) => (
+                <SelectItem key={type} value={type}>{ACCOUNT_TYPE_LABELS[type]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="transaction-import-account-balance">Starting Balance</Label>
+          <Input
+            id="transaction-import-account-balance"
+            type="number"
+            step="0.01"
+            value={accountBalance}
+            onChange={(event) => setAccountBalance(event.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+      </div>
+    );
+  } else {
+    destinationContent = (
+      <div className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+        Excel account and currency columns will be used to match or create separate destination accounts automatically.
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[560px]">
@@ -190,89 +281,7 @@ export function TransactionImportDialog({ open, accounts, onClose, onImported }:
               </div>
             </div>
 
-            {importMode === 'existing' ? (
-              <div className="space-y-2">
-                <Label htmlFor="transaction-import-account">Account</Label>
-                <Select value={accountId || undefined} onValueChange={setAccountId}>
-                  <SelectTrigger id="transaction-import-account">
-                    <SelectValue placeholder="Select an account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}{account.institution ? ` (${account.institution})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {accounts.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No accounts are available yet, so this import will create one.</p>
-                )}
-              </div>
-            ) : importMode === 'new' ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="transaction-import-account-name">Account Name</Label>
-                  <Input
-                    id="transaction-import-account-name"
-                    value={accountName}
-                    onChange={(event) => setAccountName(event.target.value)}
-                    placeholder="e.g. Imported Checking"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transaction-import-institution">Institution</Label>
-                  <Input
-                    id="transaction-import-institution"
-                    value={institution}
-                    onChange={(event) => setInstitution(event.target.value)}
-                    placeholder="Optional"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transaction-import-currency">Currency</Label>
-                  <Input
-                    id="transaction-import-currency"
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value)}
-                    maxLength={3}
-                    placeholder="USD"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transaction-import-account-type">Account Type</Label>
-                  <Select value={accountType} onValueChange={(value) => setAccountType(value as AccountType)}>
-                    <SelectTrigger id="transaction-import-account-type">
-                      <SelectValue placeholder="Select account type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUPPORTED_ACCOUNT_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>{ACCOUNT_TYPE_LABELS[type]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transaction-import-account-balance">Starting Balance</Label>
-                  <Input
-                    id="transaction-import-account-balance"
-                    type="number"
-                    step="0.01"
-                    value={accountBalance}
-                    onChange={(event) => setAccountBalance(event.target.value)}
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
-                Excel account and currency columns will be used to match or create separate destination accounts automatically.
-              </div>
-            )}
+            {destinationContent}
           </div>
 
           {error && (

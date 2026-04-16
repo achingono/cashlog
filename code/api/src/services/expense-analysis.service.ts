@@ -127,13 +127,19 @@ function cadenceToMonthlyAmount(cadence: Cadence, amount: number): number {
   return amount;
 }
 
+function matchingCadenceIntervals(cadence: Cadence, intervals: number[]): number {
+  if (cadence === 'monthly') return intervals.filter((d) => d >= 25 && d <= 35).length;
+  if (cadence === 'weekly') return intervals.filter((d) => d >= 6 && d <= 8).length;
+  return intervals.filter((d) => d >= 350 && d <= 380).length;
+}
+
 function detectRecurringMerchants(expenses: ExpenseTransaction[]): RecurringMerchant[] {
   const byMerchant = new Map<string, ExpenseTransaction[]>();
   for (const tx of expenses) {
     const merchant = normalizePayee(tx.payee || tx.description);
-    const existing = byMerchant.get(merchant);
-    if (existing) existing.push(tx);
-    else byMerchant.set(merchant, [tx]);
+    const existing = byMerchant.get(merchant) ?? [];
+    existing.push(tx);
+    byMerchant.set(merchant, existing);
   }
 
   const recurring: RecurringMerchant[] = [];
@@ -145,11 +151,7 @@ function detectRecurringMerchants(expenses: ExpenseTransaction[]): RecurringMerc
     const cadence = classifyCadence(intervals);
     if (!cadence) continue;
     const avgAmount = ordered.reduce((sum, tx) => sum + Math.abs(tx.amount), 0) / ordered.length;
-    const matching = cadence === 'monthly'
-      ? intervals.filter((d) => d >= 25 && d <= 35).length
-      : cadence === 'weekly'
-        ? intervals.filter((d) => d >= 6 && d <= 8).length
-        : intervals.filter((d) => d >= 350 && d <= 380).length;
+    const matching = matchingCadenceIntervals(cadence, intervals);
     const confidence = intervals.length > 0 ? matching / intervals.length : 0;
     recurring.push({
       merchant: merchantLabel(merchant),
@@ -196,7 +198,7 @@ function buildInsuranceOptimization(expenses: ExpenseTransaction[]): ExpenseAnal
     monthlyTotals.set(key, (monthlyTotals.get(key) ?? 0) + Math.abs(tx.amount));
     providers.add(normalizePayee(tx.payee || tx.description));
   }
-  const months = Array.from(monthlyTotals.keys()).sort();
+  const months = Array.from(monthlyTotals.keys()).sort((a, b) => a.localeCompare(b));
   const values = months.map((month) => monthlyTotals.get(month) ?? 0);
   const monthlyAverage = values.reduce((sum, value) => sum + value, 0) / values.length;
   const first = values.slice(0, Math.max(1, Math.floor(values.length / 2))).reduce((sum, value) => sum + value, 0)
@@ -286,9 +288,8 @@ function buildSavingsOpportunities(
     });
   }
 
-  return opportunities
-    .sort((a, b) => b.estimatedMonthlySavings - a.estimatedMonthlySavings)
-    .slice(0, 10);
+  const rankedOpportunities = [...opportunities].sort((a, b) => b.estimatedMonthlySavings - a.estimatedMonthlySavings);
+  return rankedOpportunities.slice(0, 10);
 }
 
 export function analyzeExpenseOptimization(transactions: ExpenseTransaction[], periodCovered: string): ExpenseAnalysisSummary {

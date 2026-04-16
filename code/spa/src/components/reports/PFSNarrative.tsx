@@ -9,7 +9,14 @@ interface PFSNarrativeProps {
   content: PFSContent;
 }
 
-function RatioBadge({ label, value, benchmark, unit = '' }: { label: string; value: number; benchmark: string; unit?: string }) {
+interface RatioBadgeProps {
+  label: string;
+  value: number;
+  benchmark: string;
+  unit?: string;
+}
+
+function RatioBadge({ label, value, benchmark, unit = '' }: Readonly<RatioBadgeProps>) {
   return (
     <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
       <div>

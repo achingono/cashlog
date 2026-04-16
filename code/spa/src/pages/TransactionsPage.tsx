@@ -64,11 +64,14 @@ export function TransactionsPage() {
     await Promise.all([refresh(), loadAccounts(), loadCategories()]);
 
     const createdCount = result.accounts.filter((account) => account.created).length;
-    const destinationLabel = result.accounts.length > 1
-      ? `${result.accounts.length} accounts updated${createdCount > 0 ? ` (${createdCount} created)` : ''}`
-      : result.account
-        ? `${result.account.name} ${result.account.created ? 'created' : 'updated'}`
-        : 'Import completed';
+    let destinationLabel = 'Import completed';
+    if (result.accounts.length > 1) {
+      const createdSuffix = createdCount > 0 ? ` (${createdCount} created)` : '';
+      destinationLabel = `${result.accounts.length} accounts updated${createdSuffix}`;
+    } else if (result.account) {
+      const accountAction = result.account.created ? 'created' : 'updated';
+      destinationLabel = `${result.account.name} ${accountAction}`;
+    }
 
     toast.success('Transactions imported', {
       description: `${result.importedCount} added, ${result.skippedCount} skipped from ${result.parsedCount} parsed. ${destinationLabel}.`,

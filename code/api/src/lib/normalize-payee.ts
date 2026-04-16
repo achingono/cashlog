@@ -6,9 +6,9 @@ const NOISE_WORDS = new Set([
 export function normalizePayee(raw: string): string {
   const cleaned = raw
     .toLowerCase()
-    .replace(/[0-9]/g, ' ')
-    .replace(/[^a-z\s]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replaceAll(/\d/g, ' ')
+    .replaceAll(/[^a-z\s]/g, ' ')
+    .replaceAll(/\s+/g, ' ')
     .trim();
   if (!cleaned) return 'unknown-merchant';
   const tokens = cleaned
@@ -17,4 +17,3 @@ export function normalizePayee(raw: string): string {
     .slice(0, 4);
   return tokens.join(' ') || 'unknown-merchant';
 }
-

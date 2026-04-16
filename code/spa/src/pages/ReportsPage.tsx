@@ -23,7 +23,12 @@ function isSpendingAnalysisContent(content: ReportContent | PFSContent | Spendin
   return 'totalExpenses' in content && 'subscriptionCandidates' in content && 'savingsOpportunities' in content;
 }
 
-function PFSDetailView({ report, onBack }: { report: Report; onBack: () => void }) {
+interface ReportDetailViewProps {
+  report: Report;
+  onBack: () => void;
+}
+
+function PFSDetailView({ report, onBack }: Readonly<ReportDetailViewProps>) {
   const content = report.content as PFSContent;
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +64,7 @@ function PFSDetailView({ report, onBack }: { report: Report; onBack: () => void 
   );
 }
 
-function MonthlyReportDetailView({ report, onBack }: { report: Report; onBack: () => void }) {
+function MonthlyReportDetailView({ report, onBack }: Readonly<ReportDetailViewProps>) {
   const c = report.content as ReportContent;
   return (
     <div className="space-y-6">
@@ -100,7 +105,7 @@ function MonthlyReportDetailView({ report, onBack }: { report: Report; onBack: (
   );
 }
 
-function SpendingAnalysisDetailView({ report, onBack }: { report: Report; onBack: () => void }) {
+function SpendingAnalysisDetailView({ report, onBack }: Readonly<ReportDetailViewProps>) {
   const c = report.content as SpendingAnalysisContent;
   return (
     <div className="space-y-6">
