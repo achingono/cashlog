@@ -34,6 +34,7 @@ export interface Transaction {
   payee: string | null;
   memo: string | null;
   isReviewed: boolean;
+  categoryRuleId: string | null;
   account: { id: string; name: string; institution: string | null };
   category: CategoryRef | null;
 }
@@ -47,6 +48,52 @@ export interface CategoryRef {
 
 export interface TransactionFilterCategory extends CategoryRef {
   count: number;
+}
+
+export type RecategorizeScope = 'single-instance' | 'all-past' | 'all-future' | 'all-past-and-future';
+
+export interface RecategorizePreview {
+  normalizedPayee: string;
+  scope: RecategorizeScope;
+  eligiblePastCount: number;
+  sample: Array<{
+    id: string;
+    posted: string;
+    amount: number;
+    description: string;
+    payee: string | null;
+    categoryId: string | null;
+  }>;
+  existingRule: {
+    id: string;
+    categoryId: string;
+    accountId: string | null;
+  } | null;
+}
+
+export interface RecategorizeResult {
+  transactionId: string;
+  categoryId: string;
+  scope: RecategorizeScope;
+  normalizedPayee: string;
+  appliedPastCount: number;
+  futureRule: {
+    id: string;
+    categoryId: string;
+    accountId: string | null;
+  } | null;
+}
+
+export interface CategoryRule {
+  id: string;
+  normalizedPayee: string;
+  categoryId: string;
+  accountId: string | null;
+  sourceTransactionId: string;
+  createdAt: string;
+  updatedAt: string;
+  category: CategoryRef;
+  account: { id: string; name: string; institution: string | null } | null;
 }
 
 export type TransactionImportFormat = 'csv' | 'ofx' | 'qfx' | 'xlsx';

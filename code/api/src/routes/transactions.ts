@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z, ZodError } from 'zod';
 import multer from 'multer';
 import { getTransactions, getTransactionFilterCategories, updateTransactionCategory } from '../services/transaction.service';
+import { getRecategorizePreview, recategorizeTransaction } from '../services/recategorization.service';
 import { validate } from '../middleware/validation';
 import { AppError } from '../middleware/error-handler';
 import { importTransactionsFromFile } from '../services/transaction-import.service';
@@ -48,6 +49,16 @@ const importBodySchema = z
       z.enum(['ofx', 'qfx', 'csv', 'xlsx']).optional(),
     ),
   });
+
+const recategorizeScopeSchema = z.enum(['single-instance', 'all-past', 'all-future', 'all-past-and-future']);
+const recategorizeBodySchema = z.object({
+  categoryId: z.string().trim().min(1),
+  scope: recategorizeScopeSchema,
+});
+
+const recategorizePreviewQuerySchema = z.object({
+  scope: recategorizeScopeSchema.default('all-past'),
+});
 
 router.get('/', validate(querySchema, 'query'), async (req, res, next) => {
   try {
@@ -139,6 +150,26 @@ router.patch('/:id', async (req, res, next) => {
     }
     const updated = await updateTransactionCategory(req.params.id, categoryId);
     res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id/recategorize-preview', validate(recategorizePreviewQuerySchema, 'query'), async (req, res, next) => {
+  try {
+    const { scope } = req.query as unknown as z.infer<typeof recategorizePreviewQuerySchema>;
+    const preview = await getRecategorizePreview(req.params.id as string, scope);
+    res.json({ data: preview });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/recategorize', validate(recategorizeBodySchema), async (req, res, next) => {
+  try {
+    const { categoryId, scope } = req.body as z.infer<typeof recategorizeBodySchema>;
+    const result = await recategorizeTransaction(req.params.id as string, categoryId, scope);
+    res.json({ data: result });
   } catch (err) {
     next(err);
   }

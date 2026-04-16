@@ -9,6 +9,7 @@ export interface TransactionListItem {
   payee: string | null;
   memo: string | null;
   isReviewed: boolean;
+  categoryRuleId: string | null;
   account: { id: string; name: string; institution: string | null };
   category: { id: string; name: string; icon: string | null; color: string | null } | null;
 }
@@ -59,6 +60,7 @@ export async function getTransactions(
       payee: t.payee,
       memo: t.memo,
       isReviewed: t.isReviewed,
+      categoryRuleId: t.categoryRuleId,
       account: t.account,
       category: t.category,
     })),
@@ -136,7 +138,7 @@ export async function getTransactionFilterCategories(filters: Omit<TransactionFi
 export async function updateTransactionCategory(id: string, categoryId: string) {
   return prisma.transaction.update({
     where: { id },
-    data: { categoryId, isReviewed: true },
+    data: { categoryId, isReviewed: true, categoryRuleId: null },
     include: {
       category: { select: { id: true, name: true, icon: true, color: true } },
     },

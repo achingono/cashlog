@@ -3,23 +3,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { RefreshCw, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { RefreshCw, CheckCircle, XCircle, Clock, Loader2, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/formatters";
-import type { SyncStatus, Category } from "@/types";
+import type { SyncStatus, Category, CategoryRule } from "@/types";
 
 export function SettingsPage() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncHistory, setSyncHistory] = useState<SyncStatus[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryRules, setCategoryRules] = useState<CategoryRule[]>([]);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.getSyncStatus(), api.getSyncHistory(), api.getCategories()])
-      .then(([s, h, c]) => {
+    Promise.all([api.getSyncStatus(), api.getSyncHistory(), api.getCategories(), api.getCategoryRules(1, 100)])
+      .then(([s, h, c, rules]) => {
         setSyncStatus(s.data);
         setSyncHistory(h.data);
         setCategories(c.data);
+        setCategoryRules(rules.data);
       })
       .catch(console.error);
   }, []);
@@ -48,6 +50,15 @@ export function SettingsPage() {
     if (status === 'SUCCESS') return 'default';
     if (status === 'FAILED') return 'destructive';
     return 'secondary';
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    try {
+      await api.deleteCategoryRule(ruleId);
+      setCategoryRules((previous) => previous.filter((rule) => rule.id !== ruleId));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -124,6 +135,34 @@ export function SettingsPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Category Rules</CardTitle>
+          <CardDescription>Future recurring transaction category overrides</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {categoryRules.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No category rules yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {categoryRules.map((rule) => (
+                <div key={rule.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                  <div>
+                    <p className="text-sm font-medium">{rule.normalizedPayee}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {rule.category.name} · {rule.account ? rule.account.name : 'All accounts'}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handleDeleteRule(rule.id)}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

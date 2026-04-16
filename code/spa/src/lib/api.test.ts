@@ -168,4 +168,57 @@ describe('api client', () => {
       expect.objectContaining({ method: 'POST' }),
     );
   });
+
+  it('supports transaction recategorization and previews', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue({ data: { transactionId: 't1' } }),
+    });
+
+    await api.getRecategorizePreview('t1', 'all-past');
+    await api.recategorizeTransaction('t1', 'c1', 'all-future');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/transactions/t1/recategorize-preview?scope=all-past',
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/transactions/t1/recategorize',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ categoryId: 'c1', scope: 'all-future' }),
+      }),
+    );
+  });
+
+  it('lists and deletes category rules', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: vi.fn(),
+      });
+
+    await api.getCategoryRules(1, 20);
+    await api.deleteCategoryRule('rule-1');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/category-rules?page=1&limit=20',
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/category-rules/rule-1',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
 });

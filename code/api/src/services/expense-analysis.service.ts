@@ -2,7 +2,10 @@ import { ReportType, type Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import openai, { getMissingAzureOpenAIConfig } from '../lib/openai';
 import { decimalToNumber } from '../lib/types';
+import { normalizePayee } from '../lib/normalize-payee';
 import { buildExpenseAnalysisPrompt } from '../prompts/expense-analysis';
+
+export { normalizePayee } from '../lib/normalize-payee';
 
 type Cadence = 'weekly' | 'monthly' | 'annual';
 type Confidence = 'low' | 'medium' | 'high';
@@ -70,11 +73,6 @@ interface ExpenseAnalysisSummary {
   dataQuality: 'sufficient' | 'insufficient';
 }
 
-const NOISE_WORDS = new Set([
-  'interac', 'purchase', 'payment', 'withdrawal', 'posted', 'visa', 'debit', 'credit', 'eft',
-  'transfer', 'internet', 'recurring', 'from', 'to', 'the', 'bank', 'canada',
-]);
-
 const INSURANCE_HINTS = ['insurance', 'insur', 'assurance', 'allstate', 'geico', 'statefarm', 'intact', 'belair', 'aviva'];
 const NEGOTIABLE_HINTS = ['internet', 'mobile', 'wireless', 'telecom', 'phone', 'utility', 'hydro', 'electric', 'cable'];
 
@@ -97,21 +95,6 @@ function toMonthKey(date: Date): string {
 
 function diffDays(a: Date, b: Date): number {
   return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / 86400000);
-}
-
-export function normalizePayee(raw: string): string {
-  const cleaned = raw
-    .toLowerCase()
-    .replace(/[0-9]/g, ' ')
-    .replace(/[^a-z\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!cleaned) return 'unknown-merchant';
-  const tokens = cleaned
-    .split(' ')
-    .filter((token) => token.length > 1 && !NOISE_WORDS.has(token))
-    .slice(0, 4);
-  return tokens.join(' ') || 'unknown-merchant';
 }
 
 function merchantLabel(raw: string): string {

@@ -5,6 +5,7 @@ import { errorHandler } from '../middleware/error-handler';
 import accountRoutes from './accounts';
 import assetRoutes from './assets';
 import budgetRoutes from './budgets';
+import categoryRuleRoutes from './category-rules';
 import categoryRoutes from './categories';
 import dashboardRoutes from './dashboard';
 import goalRoutes from './goals';
@@ -31,6 +32,19 @@ const { transactionServiceMock } = vi.hoisted(() => ({
 const { importServiceMock } = vi.hoisted(() => ({
   importServiceMock: {
     importTransactionsFromFile: vi.fn(),
+  },
+}));
+const { recategorizationServiceMock } = vi.hoisted(() => ({
+  recategorizationServiceMock: {
+    getRecategorizePreview: vi.fn(),
+    recategorizeTransaction: vi.fn(),
+  },
+}));
+const { categoryRuleServiceMock } = vi.hoisted(() => ({
+  categoryRuleServiceMock: {
+    listCategoryRules: vi.fn(),
+    deleteCategoryRule: vi.fn(),
+    applyCategoryRulesToTransactions: vi.fn(),
   },
 }));
 const { dashboardServiceMock } = vi.hoisted(() => ({
@@ -106,6 +120,8 @@ const { goalServiceMock } = vi.hoisted(() => ({
 vi.mock('../services/account.service', () => accountServiceMock);
 vi.mock('../services/transaction.service', () => transactionServiceMock);
 vi.mock('../services/transaction-import.service', () => importServiceMock);
+vi.mock('../services/recategorization.service', () => recategorizationServiceMock);
+vi.mock('../services/category-rule.service', () => categoryRuleServiceMock);
 vi.mock('../services/dashboard.service', () => dashboardServiceMock);
 vi.mock('../services/holding.service', () => holdingsServiceMock);
 vi.mock('../services/budget.service', () => budgetServiceMock);
@@ -125,6 +141,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/holdings', holdingRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/category-rules', categoryRuleRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/assets', assetRoutes);
@@ -157,6 +174,21 @@ describe('API route integration', () => {
     transactionServiceMock.getTransactions.mockResolvedValue({ data: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
     transactionServiceMock.getTransactionFilterCategories.mockResolvedValue([{ id: 'c1' }]);
     transactionServiceMock.updateTransactionCategory.mockResolvedValue({ id: 't1', categoryId: 'c1' });
+    recategorizationServiceMock.getRecategorizePreview.mockResolvedValue({
+      normalizedPayee: 'netflix com',
+      scope: 'all-past',
+      eligiblePastCount: 3,
+      sample: [],
+      existingRule: null,
+    });
+    recategorizationServiceMock.recategorizeTransaction.mockResolvedValue({
+      transactionId: 't1',
+      categoryId: 'c1',
+      scope: 'all-past-and-future',
+      normalizedPayee: 'netflix com',
+      appliedPastCount: 3,
+      futureRule: { id: 'r1', categoryId: 'c1', accountId: 'a1' },
+    });
     importServiceMock.importTransactionsFromFile.mockResolvedValue({
       format: 'csv',
       parsedCount: 2,
@@ -171,6 +203,15 @@ describe('API route integration', () => {
     await request(app).get('/api/transactions/filter-categories?search=coffee').expect(200).expect({ data: [{ id: 'c1' }] });
     await request(app).patch('/api/transactions/t1').send({ categoryId: 'c1' }).expect(200);
     await request(app).patch('/api/transactions/t1').send({}).expect(400);
+    await request(app).get('/api/transactions/t1/recategorize-preview?scope=all-past').expect(200);
+    await request(app)
+      .post('/api/transactions/t1/recategorize')
+      .send({ categoryId: 'c1', scope: 'all-past-and-future' })
+      .expect(200);
+    await request(app)
+      .post('/api/transactions/t1/recategorize')
+      .send({ categoryId: 'c1', scope: 'invalid' })
+      .expect(400);
 
     await request(app)
       .post('/api/transactions/import')
@@ -262,6 +303,17 @@ describe('API route integration', () => {
       .field('accountName', 'Imported Account')
       .attach('file', Buffer.alloc(15 * 1024 * 1024 + 1, 1), 'too-large.csv')
       .expect(400);
+  });
+
+  it('handles category rule routes', async () => {
+    categoryRuleServiceMock.listCategoryRules.mockResolvedValue({
+      data: [{ id: 'rule1' }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    categoryRuleServiceMock.deleteCategoryRule.mockResolvedValue(undefined);
+
+    await request(app).get('/api/category-rules?page=1&limit=20').expect(200);
+    await request(app).delete('/api/category-rules/rule1').expect(204);
   });
 
   it('handles dashboard and holdings routes', async () => {

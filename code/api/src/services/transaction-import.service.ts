@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto';
 import { AppError } from '../middleware/error-handler';
 import { prisma } from '../lib/prisma';
 import { triggerTransactionCategorization } from './categorization.service';
+import { applyCategoryRulesToTransactions } from './category-rule.service';
 import {
   ImportFormat,
   ImportedAccountReference,
@@ -374,6 +375,7 @@ export async function importTransactionsFromFile(input: ImportTransactionsInput)
     importedTransactionIds.push(...result.importedTransactionIds);
   }
 
+  await applyCategoryRulesToTransactions(importedTransactionIds);
   triggerTransactionCategorization(importedTransactionIds);
 
   const accounts = targets.map((target) => target.account);

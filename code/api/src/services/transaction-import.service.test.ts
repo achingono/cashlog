@@ -24,10 +24,16 @@ const { categorizationMock } = vi.hoisted(() => ({
     triggerTransactionCategorization: vi.fn(),
   },
 }));
+const { categoryRuleMock } = vi.hoisted(() => ({
+  categoryRuleMock: {
+    applyCategoryRulesToTransactions: vi.fn(),
+  },
+}));
 
 vi.mock('../lib/prisma', () => ({ prisma: prismaMock }));
 vi.mock('./transaction-import/parsers', () => ({ parseTransactionImportFile: parserMock.parseTransactionImportFile }));
 vi.mock('./categorization.service', () => ({ triggerTransactionCategorization: categorizationMock.triggerTransactionCategorization }));
+vi.mock('./category-rule.service', () => ({ applyCategoryRulesToTransactions: categoryRuleMock.applyCategoryRulesToTransactions }));
 
 import { AppError } from '../middleware/error-handler';
 import { importTransactionsFromFile } from './transaction-import.service';
@@ -35,6 +41,7 @@ import { importTransactionsFromFile } from './transaction-import.service';
 describe('transaction-import.service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    categoryRuleMock.applyCategoryRulesToTransactions.mockResolvedValue(0);
   });
 
   it('throws validation error for empty files', async () => {
@@ -147,6 +154,7 @@ describe('transaction-import.service', () => {
       }),
     );
     expect(categorizationMock.triggerTransactionCategorization).toHaveBeenCalledWith(['tx-new']);
+    expect(categoryRuleMock.applyCategoryRulesToTransactions).toHaveBeenCalledWith(['tx-new']);
   });
 
   it('imports into an existing account and does not create a new account', async () => {
@@ -216,6 +224,7 @@ describe('transaction-import.service', () => {
     expect(result.accounts).toEqual([{ id: 'acc-existing', name: 'Main Checking', created: false }]);
     expect(prismaMock.transaction.createMany).not.toHaveBeenCalled();
     expect(categorizationMock.triggerTransactionCategorization).toHaveBeenCalledWith([]);
+    expect(categoryRuleMock.applyCategoryRulesToTransactions).toHaveBeenCalledWith([]);
   });
 
   it('imports XLSX rows across multiple accounts discovered from the file', async () => {

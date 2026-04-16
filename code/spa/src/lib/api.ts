@@ -85,6 +85,13 @@ export const api = {
   },
   updateTransactionCategory: (id: string, categoryId: string) =>
     request(`/transactions/${id}`, { method: 'PATCH', body: JSON.stringify({ categoryId }) }),
+  getRecategorizePreview: (id: string, scope: import('../types').RecategorizeScope) =>
+    request<{ data: import('../types').RecategorizePreview }>(`/transactions/${id}/recategorize-preview?scope=${scope}`),
+  recategorizeTransaction: (id: string, categoryId: string, scope: import('../types').RecategorizeScope) =>
+    request<{ data: import('../types').RecategorizeResult }>(`/transactions/${id}/recategorize`, {
+      method: 'POST',
+      body: JSON.stringify({ categoryId, scope }),
+    }),
   importTransactions: (input: {
     file: File;
     format?: import('../types').TransactionImportFormat;
@@ -127,6 +134,9 @@ export const api = {
 
   // Categories
   getCategories: () => request<{ data: import('../types').Category[] }>('/categories'),
+  getCategoryRules: (page = 1, limit = 20) =>
+    request<import('../types').PaginatedResponse<import('../types').CategoryRule>>(`/category-rules?page=${page}&limit=${limit}`),
+  deleteCategoryRule: (id: string) => request(`/category-rules/${id}`, { method: 'DELETE' }),
   createCategory: (data: { name: string; icon?: string; color?: string; parentId?: string }) =>
     request('/categories', { method: 'POST', body: JSON.stringify(data) }),
 

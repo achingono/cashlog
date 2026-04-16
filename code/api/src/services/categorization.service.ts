@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import openai, { getMissingAzureOpenAIConfig } from '../lib/openai';
 import { prisma } from '../lib/prisma';
 import { buildCategorizationPrompt } from '../prompts/categorize';
+import { applyCategoryRulesToTransactions } from './category-rule.service';
 
 const BATCH_SIZE = 30;
 
@@ -84,17 +85,19 @@ function logBatchError(err: unknown, batchNumber: number): void {
 export async function runTransactionCategorization(transactionIds: string[]): Promise<number> {
   if (transactionIds.length === 0) return 0;
 
+  const ruleAppliedCount = await applyCategoryRulesToTransactions(transactionIds);
+
   const missingConfig = getMissingAzureOpenAIConfig();
   if (missingConfig.length > 0) {
     console.warn(`[Categorize] Skipping: missing Azure OpenAI config (${missingConfig.join(', ')})`);
-    return 0;
+    return ruleAppliedCount;
   }
 
   const categories = await prisma.category.findMany({
     where: { children: { none: {} } },
     select: { id: true, name: true },
   });
-  if (categories.length === 0) return 0;
+  if (categories.length === 0) return ruleAppliedCount;
 
   const uncategorized = await prisma.transaction.findMany({
     where: {
@@ -104,7 +107,7 @@ export async function runTransactionCategorization(transactionIds: string[]): Pr
     },
     orderBy: { posted: 'desc' },
   });
-  if (uncategorized.length === 0) return 0;
+  if (uncategorized.length === 0) return ruleAppliedCount;
 
   let categorized = 0;
   const validCategoryIds = new Set(categories.map((category) => category.id));
@@ -141,7 +144,7 @@ export async function runTransactionCategorization(transactionIds: string[]): Pr
     }
   }
 
-  return categorized;
+  return ruleAppliedCount + categorized;
 }
 
 export function triggerTransactionCategorization(transactionIds: string[]): void {

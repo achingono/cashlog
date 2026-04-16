@@ -34,6 +34,7 @@ describe('transaction.service', () => {
         payee: 'Cafe',
         memo: null,
         isReviewed: false,
+        categoryRuleId: null,
         account: { id: 'a1', name: 'Checking', institution: 'Bank' },
         category: null,
       },
@@ -78,7 +79,7 @@ describe('transaction.service', () => {
     expect(prismaMock.transaction.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 't1' },
-        data: { categoryId: 'c1', isReviewed: true },
+        data: { categoryId: 'c1', isReviewed: true, categoryRuleId: null },
       }),
     );
   });

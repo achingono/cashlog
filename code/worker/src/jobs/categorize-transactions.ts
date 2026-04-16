@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import openai, { getMissingAzureOpenAIConfig } from '../lib/openai';
+import { normalizePayee } from '../lib/normalize-payee';
 import { buildCategorizationPrompt } from '../prompts/categorize';
 
 const BATCH_SIZE = 30;
@@ -98,12 +99,75 @@ function logBatchError(err: unknown, batchNumber: number): void {
   console.error(`[Categorize] Batch ${batchNumber} failed:`, err);
 }
 
+async function applyCategoryRulesToTransactions(transactionIds: string[]): Promise<number> {
+  if (transactionIds.length === 0) return 0;
+
+  const [rules, transactions] = await Promise.all([
+    prisma.categoryRule.findMany({
+      select: { id: true, normalizedPayee: true, accountId: true, categoryId: true },
+    }),
+    prisma.transaction.findMany({
+      where: {
+        id: { in: transactionIds },
+        categoryId: null,
+        isReviewed: false,
+      },
+      select: {
+        id: true,
+        accountId: true,
+        description: true,
+        payee: true,
+      },
+    }),
+  ]);
+
+  if (rules.length === 0 || transactions.length === 0) return 0;
+
+  const accountScoped = new Map<string, { id: string; categoryId: string }>();
+  const globalRules = new Map<string, { id: string; categoryId: string }>();
+  for (const rule of rules) {
+    if (rule.accountId) accountScoped.set(`${rule.accountId}::${rule.normalizedPayee}`, { id: rule.id, categoryId: rule.categoryId });
+    else globalRules.set(rule.normalizedPayee, { id: rule.id, categoryId: rule.categoryId });
+  }
+
+  let applied = 0;
+  for (const tx of transactions) {
+    const key = normalizePayee(tx.payee || tx.description);
+    if (key === 'unknown-merchant') continue;
+    const rule = accountScoped.get(`${tx.accountId}::${key}`) ?? globalRules.get(key);
+    if (!rule) continue;
+
+    await prisma.transaction.update({
+      where: { id: tx.id },
+      data: {
+        categoryId: rule.categoryId,
+        isReviewed: true,
+        categoryRuleId: rule.id,
+      },
+    });
+    applied += 1;
+  }
+
+  return applied;
+}
+
 export async function categorizeTransactions(): Promise<number> {
   console.log('[Categorize] Starting transaction categorization...');
+  const candidateUncategorized = await prisma.transaction.findMany({
+    where: {
+      categoryId: null,
+      isReviewed: false,
+    },
+    orderBy: { posted: 'desc' },
+    take: BATCH_SIZE * 3, // Process up to 3 batches per run
+  });
+  const candidateIds = candidateUncategorized.map((transaction) => transaction.id);
+  const ruleApplied = await applyCategoryRulesToTransactions(candidateIds);
+
   const missingConfig = getMissingAzureOpenAIConfig();
   if (missingConfig.length > 0) {
     console.warn(`[Categorize] Skipping: missing Azure OpenAI config (${missingConfig.join(', ')})`);
-    return 0;
+    return ruleApplied;
   }
 
   const categories = await prisma.category.findMany({
@@ -112,21 +176,21 @@ export async function categorizeTransactions(): Promise<number> {
 
   if (categories.length === 0) {
     console.log('[Categorize] No categories found, skipping');
-    return 0;
+    return ruleApplied;
   }
 
-  const uncategorized = await prisma.transaction.findMany({
+  const afterRuleApplication = await prisma.transaction.findMany({
     where: {
+      id: { in: candidateIds },
       categoryId: null,
       isReviewed: false,
     },
     orderBy: { posted: 'desc' },
-    take: BATCH_SIZE * 3, // Process up to 3 batches per run
   });
 
-  if (uncategorized.length === 0) {
+  if (afterRuleApplication.length === 0) {
     console.log('[Categorize] No uncategorized transactions found');
-    return 0;
+    return ruleApplied;
   }
 
   let categorized = 0;
@@ -135,8 +199,8 @@ export async function categorizeTransactions(): Promise<number> {
     categories.map(c => [c.name.trim().toLowerCase(), c.id] as const)
   );
 
-  for (let i = 0; i < uncategorized.length; i += BATCH_SIZE) {
-    const batch = uncategorized.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < afterRuleApplication.length; i += BATCH_SIZE) {
+    const batch = afterRuleApplication.slice(i, i + BATCH_SIZE);
     const prompt = buildCategorizationPrompt(
       categories.map(c => ({ name: c.name, id: c.id })),
       batch.map(t => ({
@@ -168,5 +232,5 @@ export async function categorizeTransactions(): Promise<number> {
   }
 
   console.log(`[Categorize] Total categorized: ${categorized}`);
-  return categorized;
+  return ruleApplied + categorized;
 }

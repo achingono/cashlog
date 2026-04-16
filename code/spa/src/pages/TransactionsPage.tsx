@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTransactions } from "@/hooks/use-transactions";
 import { TransactionImportDialog } from "@/components/transactions/TransactionImportDialog";
+import { RecategorizeDialog } from "@/components/transactions/RecategorizeDialog";
 import { TransactionFilters } from "@/components/transactions/TransactionFilters";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import type { Account, TransactionFilterCategory, TransactionImportResult } from "@/types";
+import type { Account, Category, Transaction, TransactionFilterCategory, TransactionImportResult } from "@/types";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,8 +17,11 @@ const LOADING_ROW_KEYS = ['tx-loading-1', 'tx-loading-2', 'tx-loading-3', 'tx-lo
 export function TransactionsPage() {
   const { transactions, pagination, loading, filters, updateFilters, setPage, refresh } = useTransactions();
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<TransactionFilterCategory[]>([]);
+  const [filterCategories, setFilterCategories] = useState<TransactionFilterCategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [recategorizeOpen, setRecategorizeOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   const loadAccounts = useCallback(async () => {
     const response = await api.getAccounts();
@@ -32,12 +36,17 @@ export function TransactionsPage() {
       search: filters.search,
     });
 
-    setCategories(response.data);
+    setFilterCategories(response.data);
 
     if (filters.categoryId && !response.data.some((category) => category.id === filters.categoryId)) {
       updateFilters({ categoryId: undefined });
     }
   }, [filters.accountId, filters.categoryId, filters.endDate, filters.search, filters.startDate, updateFilters]);
+
+  const loadAllCategories = useCallback(async () => {
+    const response = await api.getCategories();
+    setCategories(response.data);
+  }, []);
 
   useEffect(() => {
     loadAccounts().catch(console.error);
@@ -46,6 +55,10 @@ export function TransactionsPage() {
   useEffect(() => {
     loadCategories().catch(console.error);
   }, [loadCategories]);
+
+  useEffect(() => {
+    loadAllCategories().catch(console.error);
+  }, [loadAllCategories]);
 
   const handleImported = async (result: TransactionImportResult) => {
     await Promise.all([refresh(), loadAccounts(), loadCategories()]);
@@ -62,6 +75,15 @@ export function TransactionsPage() {
     });
   };
 
+  const handleRecategorizationApplied = async (result: { scope: string; appliedPastCount: number; futureRuleCreated: boolean }) => {
+    await Promise.all([refresh(), loadCategories()]);
+    const details = [
+      result.scope === 'single-instance' ? 'Updated this transaction.' : `Updated ${result.appliedPastCount} past transactions.`,
+      result.futureRuleCreated ? 'Future matches will auto-categorize.' : null,
+    ].filter(Boolean).join(' ');
+    toast.success('Category updated', { description: details });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -71,12 +93,12 @@ export function TransactionsPage() {
         </Button>
       </div>
 
-      <TransactionFilters
-        accounts={accounts}
-        categories={categories}
-        filters={filters}
-        onFilterChange={updateFilters}
-      />
+        <TransactionFilters
+          accounts={accounts}
+          categories={filterCategories}
+          filters={filters}
+          onFilterChange={updateFilters}
+        />
 
       <Card>
         <CardContent className="p-0">
@@ -89,6 +111,11 @@ export function TransactionsPage() {
               transactions={transactions}
               pagination={pagination}
               onPageChange={setPage}
+              onCategoryClick={(transactionId) => {
+                const selected = transactions.find((tx) => tx.id === transactionId) ?? null;
+                setSelectedTransaction(selected);
+                setRecategorizeOpen(Boolean(selected));
+              }}
             />
           )}
         </CardContent>
@@ -99,6 +126,16 @@ export function TransactionsPage() {
         accounts={accounts}
         onClose={() => setImportOpen(false)}
         onImported={handleImported}
+      />
+      <RecategorizeDialog
+        open={recategorizeOpen}
+        transaction={selectedTransaction}
+        categories={categories}
+        onClose={() => {
+          setRecategorizeOpen(false);
+          setSelectedTransaction(null);
+        }}
+        onApplied={handleRecategorizationApplied}
       />
     </div>
   );
