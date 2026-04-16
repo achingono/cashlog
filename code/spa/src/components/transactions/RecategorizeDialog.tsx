@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import type { Category, RecategorizeScope, Transaction } from '@/types';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -14,6 +15,7 @@ interface RecategorizeDialogProps {
   categories: Category[];
   onClose: () => void;
   onApplied: (result: { scope: RecategorizeScope; appliedPastCount: number; futureRuleCreated: boolean }) => Promise<void> | void;
+  onCategoriesChanged: () => Promise<void> | void;
 }
 
 const SCOPE_OPTIONS: Array<{ value: RecategorizeScope; label: string }> = [
@@ -23,13 +25,18 @@ const SCOPE_OPTIONS: Array<{ value: RecategorizeScope; label: string }> = [
   { value: 'all-past-and-future', label: 'All past and future matching transactions' },
 ];
 
-export function RecategorizeDialog({ open, transaction, categories, onClose, onApplied }: Readonly<RecategorizeDialogProps>) {
+export function RecategorizeDialog({ open, transaction, categories, onClose, onApplied, onCategoriesChanged }: Readonly<RecategorizeDialogProps>) {
   const [categoryId, setCategoryId] = useState<string>('');
   const [scope, setScope] = useState<RecategorizeScope>('single-instance');
   const [matchingPastCount, setMatchingPastCount] = useState(0);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [isManaging, setIsManaging] = useState(false);
+  const [manageError, setManageError] = useState<string | null>(null);
 
   const leafCategories = useMemo(() => {
     const flattened: Category[] = [];
@@ -52,6 +59,18 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
     setMatchingPastCount(0);
     setError(null);
   }, [open, transaction]);
+
+  useEffect(() => {
+    const selected = leafCategories.find((category) => category.id === categoryId);
+    setEditCategoryName(selected?.name ?? '');
+  }, [leafCategories, categoryId]);
+
+  useEffect(() => {
+    if (!manageOpen) {
+      setManageError(null);
+      setNewCategoryName('');
+    }
+  }, [manageOpen]);
 
   useEffect(() => {
     if (!open || !transaction || (scope !== 'all-past' && scope !== 'all-past-and-future')) {
@@ -97,6 +116,50 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
     }
   };
 
+  const handleCreateCategory = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) {
+      setManageError('Enter a category name.');
+      return;
+    }
+    setManageError(null);
+    setIsManaging(true);
+    try {
+      const response = await api.createCategory({ name });
+      setCategoryId(response.data.id);
+      setNewCategoryName('');
+      await onCategoriesChanged();
+    } catch (manageCreateError: any) {
+      setManageError(manageCreateError.message || 'Failed to create category.');
+    } finally {
+      setIsManaging(false);
+    }
+  };
+
+  const handleRenameCategory = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!categoryId) {
+      setManageError('Select a category first.');
+      return;
+    }
+    const name = editCategoryName.trim();
+    if (!name) {
+      setManageError('Enter a category name.');
+      return;
+    }
+    setManageError(null);
+    setIsManaging(true);
+    try {
+      await api.updateCategory(categoryId, { name });
+      await onCategoriesChanged();
+    } catch (manageUpdateError: any) {
+      setManageError(manageUpdateError.message || 'Failed to update category.');
+    } finally {
+      setIsManaging(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[560px]">
@@ -122,6 +185,11 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => { setManageError(null); setManageOpen(true); }}>
+                Add / Edit Categories
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -159,6 +227,35 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
           </DialogFooter>
         </form>
       </DialogContent>
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Manage Categories</DialogTitle>
+            <DialogDescription>Create a new category or rename the selected category.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5">
+            <form onSubmit={handleCreateCategory} className="space-y-2">
+              <Label htmlFor="new-category-name">New Category Name</Label>
+              <div className="flex gap-2">
+                <Input id="new-category-name" value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="e.g. Streaming" />
+                <Button type="submit" disabled={isManaging}>Add</Button>
+              </div>
+            </form>
+            <form onSubmit={handleRenameCategory} className="space-y-2">
+              <Label htmlFor="edit-category-name">Rename Selected Category</Label>
+              <div className="flex gap-2">
+                <Input id="edit-category-name" value={editCategoryName} onChange={(event) => setEditCategoryName(event.target.value)} placeholder="Select a category first" />
+                <Button type="submit" variant="outline" disabled={isManaging || !categoryId}>Save</Button>
+              </div>
+            </form>
+            {manageError && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {manageError}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -72,6 +72,7 @@ const { categoryServiceMock } = vi.hoisted(() => ({
   categoryServiceMock: {
     getCategories: vi.fn(),
     createCategory: vi.fn(),
+    updateCategory: vi.fn(),
   },
 }));
 const { reportServiceMock } = vi.hoisted(() => ({
@@ -337,6 +338,7 @@ describe('API route integration', () => {
     budgetServiceMock.deleteBudget.mockResolvedValue(undefined);
     categoryServiceMock.getCategories.mockResolvedValue([{ id: 'c1' }]);
     categoryServiceMock.createCategory.mockResolvedValue({ id: 'c2' });
+    categoryServiceMock.updateCategory.mockResolvedValue({ id: 'c2', name: 'Trips' });
     reportServiceMock.getReports.mockResolvedValue({ data: [{ id: 'r1' }], pagination: { page: 1, limit: 10, total: 1, totalPages: 1 } });
     reportServiceMock.getReportById.mockResolvedValueOnce({ id: 'r1' }).mockResolvedValueOnce(null);
     pfsServiceMock.generatePFS.mockResolvedValue({ id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' });
@@ -355,6 +357,8 @@ describe('API route integration', () => {
 
     await request(app).get('/api/categories').expect(200).expect({ data: [{ id: 'c1' }] });
     await request(app).post('/api/categories').send({ name: 'Travel' }).expect(201);
+    await request(app).patch('/api/categories/c2').send({ name: 'Trips' }).expect(200);
+    await request(app).patch('/api/categories/c2').send({}).expect(400);
 
     await request(app).get('/api/reports?page=1&limit=10').expect(200);
     await request(app).get('/api/reports/r1').expect(200);

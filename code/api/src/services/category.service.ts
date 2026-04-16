@@ -17,3 +17,18 @@ export async function getCategories() {
 export async function createCategory(data: { name: string; icon?: string; color?: string; parentId?: string }) {
   return prisma.category.create({ data });
 }
+
+export async function updateCategory(
+  id: string,
+  data: { name?: string; icon?: string | null; color?: string | null; parentId?: string | null },
+) {
+  const existing = await prisma.category.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existing) return null;
+  return prisma.category.update({
+    where: { id },
+    data,
+  });
+}

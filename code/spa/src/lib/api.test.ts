@@ -221,4 +221,38 @@ describe('api client', () => {
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
+
+  it('creates and updates categories', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue({ data: { id: 'c1', name: 'Subscriptions' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ data: { id: 'c1', name: 'Streaming' } }),
+      });
+
+    await api.createCategory({ name: 'Subscriptions' });
+    await api.updateCategory('c1', { name: 'Streaming' });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/categories',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ name: 'Subscriptions' }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/categories/c1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Streaming' }),
+      }),
+    );
+  });
 });

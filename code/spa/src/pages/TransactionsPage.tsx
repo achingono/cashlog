@@ -131,6 +131,7 @@ export function TransactionsPage() {
         open={recategorizeOpen}
         transaction={selectedTransaction}
         categories={categories}
+        onCategoriesChanged={loadAllCategories}
         onClose={() => {
           setRecategorizeOpen(false);
           setSelectedTransaction(null);

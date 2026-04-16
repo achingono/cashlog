@@ -138,7 +138,9 @@ export const api = {
     request<import('../types').PaginatedResponse<import('../types').CategoryRule>>(`/category-rules?page=${page}&limit=${limit}`),
   deleteCategoryRule: (id: string) => request(`/category-rules/${id}`, { method: 'DELETE' }),
   createCategory: (data: { name: string; icon?: string; color?: string; parentId?: string }) =>
-    request('/categories', { method: 'POST', body: JSON.stringify(data) }),
+    request<{ data: import('../types').Category }>('/categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateCategory: (id: string, data: { name?: string; icon?: string | null; color?: string | null; parentId?: string | null }) =>
+    request<{ data: import('../types').Category }>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Reports
   getReports: (page = 1, limit = 10) => request<import('../types').PaginatedResponse<import('../types').Report>>(`/reports?page=${page}&limit=${limit}`),
