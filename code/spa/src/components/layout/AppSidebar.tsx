@@ -7,7 +7,6 @@ import {
   Target,
   FileText,
   Settings,
-  DollarSign,
 } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import {
@@ -22,6 +21,8 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+import brandMark from "@/assets/doughray-mark.png";
+import { BRAND } from "@/lib/brand";
 
 const navItems = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/" },
@@ -39,20 +40,22 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-6 py-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <DollarSign className="h-5 w-5" />
-          </div>
+      <SidebarHeader className="border-b border-sidebar-border/60 px-5 py-4">
+        <Link to="/" className="flex items-center gap-3">
+          <img
+            src={brandMark}
+            alt={`${BRAND.name} mark`}
+            className="h-10 w-10 rounded-xl border border-sidebar-border/70 object-cover"
+          />
           <div>
-            <h1 className="text-lg font-bold leading-none">Cashlog</h1>
-            <p className="text-xs text-muted-foreground">Personal Finance</p>
+            <h1 className="text-lg font-semibold leading-none tracking-tight">{BRAND.name}</h1>
+            <p className="text-xs text-muted-foreground">{BRAND.tagline}</p>
           </div>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -72,9 +75,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t px-4 py-3">
+      <SidebarFooter className="border-t border-sidebar-border/60 px-4 py-3">
         <p className="text-xs text-muted-foreground text-center">
-          Cashlog v1.0
+          {BRAND.name} {BRAND.version}
         </p>
       </SidebarFooter>
     </Sidebar>

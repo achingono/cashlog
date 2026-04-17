@@ -9,6 +9,8 @@ import { BudgetProgress } from "@/components/dashboard/BudgetProgress";
 import { GoalProgress } from "@/components/dashboard/GoalProgress";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
 import { Skeleton } from "@/components/ui/skeleton";
+import dashboardHero from "@/assets/doughray-hero.png";
+import { BRAND } from "@/lib/brand";
 
 const LOADING_CARD_KEYS = ['dashboard-loading-1', 'dashboard-loading-2', 'dashboard-loading-3', 'dashboard-loading-4'] as const;
 
@@ -31,7 +33,7 @@ export function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{BRAND.name} Dashboard</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {LOADING_CARD_KEYS.map((key) => (
@@ -48,15 +50,32 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <DateRangeFilter
-          accounts={accounts}
-          selectedAccountId={selectedAccount}
-          onAccountChange={setSelectedAccount}
-          period={period}
-          onPeriodChange={setPeriod}
+      <div className="relative overflow-hidden rounded-2xl border border-border/70">
+        <img
+          src={dashboardHero}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          aria-hidden
         />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-background/60" />
+        <div className="relative flex flex-col gap-4 p-5 md:flex-row md:items-end md:justify-between md:p-6">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{BRAND.name} command deck</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Dashboard</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{BRAND.tagline}</p>
+          </div>
+          <DateRangeFilter
+            accounts={accounts}
+            selectedAccountId={selectedAccount}
+            onAccountChange={setSelectedAccount}
+            period={period}
+            onPeriodChange={setPeriod}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium uppercase tracking-[0.16em] text-muted-foreground">Snapshot</h3>
       </div>
 
       <NetWorthCard summary={summary} />
