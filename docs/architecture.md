@@ -1,4 +1,4 @@
-# Cashlog — Architecture Documentation
+# Doughray — Architecture Documentation
 
 > Personal finance dashboard for self-hosted, single-user deployments.
 
@@ -6,7 +6,7 @@
 
 ## 1. System Overview
 
-Cashlog is a containerized personal finance dashboard composed of **four Docker containers** orchestrated via Docker Compose:
+Doughray is a containerized personal finance dashboard composed of **four Docker containers** orchestrated via Docker Compose:
 
 | Container    | Technology       | Role                                      |
 | ------------ | ---------------- | ----------------------------------------- |
@@ -511,7 +511,7 @@ NetWorthSnapshot (standalone)
 
 **Step-by-step:**
 
-1. **Browser request** — the user navigates to the Cashlog URL. The browser sends the request to the **SPA container** (Nginx on port 80).
+1. **Browser request** — the user navigates to the Doughray URL. The browser sends the request to the **SPA container** (Nginx on port 80).
 2. **Static assets** — HTML, CSS, JS, and images are served directly by Nginx from the built React application. Hashed assets receive 1-year cache headers.
 3. **API calls** — any request matching `/api/*` is reverse-proxied by Nginx to the **API container** on port 3000. The browser never communicates directly with the API container.
 4. **Database queries** — the API container queries **PostgreSQL** via Prisma Client, leveraging connection pooling for efficient database access.

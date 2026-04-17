@@ -1,8 +1,8 @@
-# Cashlog Deployment Guide
+# Doughray Deployment Guide
 
-This guide covers everything needed to deploy the Cashlog financial dashboard application from scratch.
+This guide covers everything needed to deploy the Doughray financial dashboard application from scratch.
 
-Cashlog consists of four services orchestrated via Docker Compose:
+Doughray consists of four services orchestrated via Docker Compose:
 
 - **postgres** — PostgreSQL 16 database
 - **api** — Node.js/Express REST API (TypeScript, Prisma ORM)
@@ -39,8 +39,8 @@ Cashlog consists of four services orchestrated via Docker Compose:
 
 ```bash
 # 1. Clone the repository
-git clone <repo-url> Cashlog
-cd Cashlog/code
+git clone <repo-url> Doughray
+cd Doughray/code
 
 # 2. Copy the example environment file
 cp .env.example .env
@@ -158,7 +158,7 @@ Azure OpenAI powers the LLM features such as transaction categorization and fina
 
 ## 6. Database Management
 
-Cashlog uses [Prisma](https://www.prisma.io/) for database migrations and schema management against PostgreSQL 16.
+Doughray uses [Prisma](https://www.prisma.io/) for database migrations and schema management against PostgreSQL 16.
 
 ### Migrations
 
@@ -204,7 +204,7 @@ docker compose exec -T postgres psql -U finance finance < backup.sql
 
 ### Use a Reverse Proxy with SSL
 
-In production, place a reverse proxy in front of Cashlog to handle TLS termination. Bind the SPA port to `127.0.0.1` only:
+In production, place a reverse proxy in front of Doughray to handle TLS termination. Bind the SPA port to `127.0.0.1` only:
 
 ```env
 SPA_PORT=127.0.0.1:8080:80
@@ -217,7 +217,7 @@ Caddy is the simplest option — it automatically provisions and renews Let's En
 
 ```
 # /etc/caddy/Caddyfile
-Cashlog.example.com {
+Doughray.example.com {
     reverse_proxy localhost:8080
 }
 ```
@@ -233,16 +233,16 @@ sudo systemctl reload caddy
 ```nginx
 server {
     listen 80;
-    server_name Cashlog.example.com;
+    server_name Doughray.example.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name Cashlog.example.com;
+    server_name Doughray.example.com;
 
-    ssl_certificate     /etc/letsencrypt/live/Cashlog.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/Cashlog.example.com/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/Doughray.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/Doughray.example.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -261,7 +261,7 @@ server {
 Use [Certbot](https://certbot.eff.org/) to obtain certificates:
 
 ```bash
-sudo certbot --nginx -d Cashlog.example.com
+sudo certbot --nginx -d Doughray.example.com
 ```
 
 ### Firewall Recommendations
@@ -406,31 +406,31 @@ Create a cron job to back up the database daily:
 
 ```bash
 #!/usr/bin/env bash
-# /opt/Cashlog/backup.sh
+# /opt/Doughray/backup.sh
 set -euo pipefail
 
-BACKUP_DIR="/opt/Cashlog/backups"
+BACKUP_DIR="/opt/Doughray/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=30
 
 mkdir -p "$BACKUP_DIR"
 
 # Dump the database
-docker compose -f /path/to/Cashlog/code/docker-compose.yml \
+docker compose -f /path/to/Doughray/code/docker-compose.yml \
   exec -T postgres pg_dump -U finance finance \
-  | gzip > "$BACKUP_DIR/Cashlog_${TIMESTAMP}.sql.gz"
+  | gzip > "$BACKUP_DIR/Doughray_${TIMESTAMP}.sql.gz"
 
 # Remove backups older than retention period
-find "$BACKUP_DIR" -name "Cashlog_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+find "$BACKUP_DIR" -name "Doughray_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
 
-echo "Backup complete: Cashlog_${TIMESTAMP}.sql.gz"
+echo "Backup complete: Doughray_${TIMESTAMP}.sql.gz"
 ```
 
 Add to crontab (`crontab -e`):
 
 ```cron
 # Daily backup at 2:00 AM
-0 2 * * * /opt/Cashlog/backup.sh >> /var/log/Cashlog-backup.log 2>&1
+0 2 * * * /opt/Doughray/backup.sh >> /var/log/Doughray-backup.log 2>&1
 ```
 
 ### Volume Backup
@@ -443,7 +443,7 @@ docker compose down
 
 # Find and back up the volume
 docker volume inspect master-sink-trail_pgdata --format '{{ .Mountpoint }}'
-sudo tar -czf Cashlog-pgdata-backup.tar.gz \
+sudo tar -czf Doughray-pgdata-backup.tar.gz \
   $(docker volume inspect master-sink-trail_pgdata --format '{{ .Mountpoint }}')
 
 # Restart services
@@ -454,7 +454,7 @@ docker compose up -d
 
 ```bash
 docker compose down
-sudo tar -xzf Cashlog-pgdata-backup.tar.gz -C /
+sudo tar -xzf Doughray-pgdata-backup.tar.gz -C /
 docker compose up -d
 ```
 

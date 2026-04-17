@@ -1,6 +1,6 @@
-# Cashlog Development Guide
+# Doughray Development Guide
 
-A comprehensive guide for developing the Cashlog personal finance dashboard locally.
+A comprehensive guide for developing the Doughray personal finance dashboard locally.
 
 ---
 

@@ -1,6 +1,6 @@
-# Cashlog API Reference
+# Doughray API Reference
 
-Complete REST API reference for the Cashlog financial dashboard backend.
+Complete REST API reference for the Doughray financial dashboard backend.
 
 ## Base URL
 

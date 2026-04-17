@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💰 Cashlog — Personal Finance Dashboard
+# 💰 Doughray — Personal Finance Dashboard
 
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)
@@ -8,8 +8,9 @@
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-A self-hosted personal finance dashboard inspired by [Wealthica](https://wealthica.com/).
-Aggregate all your bank accounts, track net worth, visualize spending, and get AI-generated monthly financial reports, all running privately on your own hardware.
+![Doughray product cover showcasing dashboard, transactions, budgets, goals, and reports](docs/cover-image.png)
+
+A self-hosted personal finance dashboard that aggregates all your bank accounts, track net worth, visualize spending, and get AI-generated monthly financial reports, all running privately on your own hardware.
 
 [Features](#-features) · [Quick Start](#-quick-start) · [Architecture](#-architecture) · [Tech Stack](#-tech-stack) · [Configuration](#configuration)
 
