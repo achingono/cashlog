@@ -367,21 +367,23 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="flex w-full items-center gap-2 rounded-md border px-3 py-2 sm:w-auto sm:py-1.5">
             <Switch id="overwrite-existing" checked={overwriteExisting} onCheckedChange={(checked) => setOverwriteExisting(checked === true)} />
-            <Label htmlFor="overwrite-existing" className="text-xs text-muted-foreground">Overwrite current period</Label>
+            <Label htmlFor="overwrite-existing" className="text-xs leading-tight text-muted-foreground">
+              Overwrite current period
+            </Label>
           </div>
-          <Button onClick={handleGenerateExpenseAnalysis} disabled={generatingExpense}>
+          <Button className="w-full sm:w-auto" onClick={handleGenerateExpenseAnalysis} disabled={generatingExpense}>
             {generatingExpense ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
             ) : (
               <><TrendingUp className="h-4 w-4 mr-2" />Generate Expense Analysis</>
             )}
           </Button>
-          <Button onClick={handleGeneratePFS} disabled={generating}>
+          <Button className="w-full sm:w-auto" onClick={handleGeneratePFS} disabled={generating}>
             {generating ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
             ) : (
