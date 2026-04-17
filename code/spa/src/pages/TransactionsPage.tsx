@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { useTransactions } from "@/hooks/use-transactions";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useTransactions, type TransactionFilters as TransactionsQueryFilters } from "@/hooks/use-transactions";
 import { TransactionImportDialog } from "@/components/transactions/TransactionImportDialog";
 import { RecategorizeDialog } from "@/components/transactions/RecategorizeDialog";
 import { TransactionFilters } from "@/components/transactions/TransactionFilters";
@@ -14,8 +15,26 @@ import { toast } from "sonner";
 
 const LOADING_ROW_KEYS = ['tx-loading-1', 'tx-loading-2', 'tx-loading-3', 'tx-loading-4', 'tx-loading-5', 'tx-loading-6', 'tx-loading-7', 'tx-loading-8'] as const;
 
+function fromSearchParams(searchParams: URLSearchParams): TransactionsQueryFilters {
+  const accountId = searchParams.get("accountId") ?? undefined;
+  const categoryId = searchParams.get("categoryId") ?? undefined;
+  const startDate = searchParams.get("startDate") ?? undefined;
+  const endDate = searchParams.get("endDate") ?? undefined;
+  const search = searchParams.get("search") ?? undefined;
+
+  return {
+    accountId,
+    categoryId,
+    startDate,
+    endDate,
+    search,
+  };
+}
+
 export function TransactionsPage() {
-  const { transactions, pagination, loading, filters, updateFilters, setPage, refresh } = useTransactions();
+  const [searchParams] = useSearchParams();
+  const initialFilters = useMemo(() => fromSearchParams(searchParams), [searchParams]);
+  const { transactions, pagination, loading, filters, updateFilters, setPage, refresh } = useTransactions(initialFilters);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [filterCategories, setFilterCategories] = useState<TransactionFilterCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

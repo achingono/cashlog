@@ -22,8 +22,8 @@ export function TransactionFilters({ accounts, categories, filters, onFilterChan
   const hasFilters = filters.accountId || filters.categoryId || filters.search || filters.startDate;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="relative flex-1 min-w-[200px] max-w-sm">
+    <div className="flex flex-wrap items-stretch gap-3 sm:items-center">
+      <div className="relative w-full min-w-0 sm:min-w-[220px] sm:max-w-sm sm:flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search transactions..."
@@ -34,7 +34,7 @@ export function TransactionFilters({ accounts, categories, filters, onFilterChan
       </div>
 
       <Select value={filters.accountId || 'all'} onValueChange={(v) => onFilterChange({ accountId: v === 'all' ? undefined : v })}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="All Accounts" />
         </SelectTrigger>
         <SelectContent>
@@ -44,7 +44,7 @@ export function TransactionFilters({ accounts, categories, filters, onFilterChan
       </Select>
 
       <Select value={filters.categoryId || 'all'} onValueChange={(v) => onFilterChange({ categoryId: v === 'all' ? undefined : v })}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="All Categories" />
         </SelectTrigger>
         <SelectContent>
@@ -56,14 +56,14 @@ export function TransactionFilters({ accounts, categories, filters, onFilterChan
       </Select>
 
       <DatePicker
-        className="w-[180px]"
+        className="w-full sm:w-[180px]"
         value={filters.startDate}
         onChange={(value) => onFilterChange({ startDate: value })}
         placeholder="Start date"
       />
 
       <DatePicker
-        className="w-[180px]"
+        className="w-full sm:w-[180px]"
         value={filters.endDate}
         onChange={(value) => onFilterChange({ endDate: value })}
         placeholder="End date"

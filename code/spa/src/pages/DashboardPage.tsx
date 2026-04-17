@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useAccounts } from "@/hooks/use-accounts";
 import { NetWorthCard } from "@/components/dashboard/NetWorthCard";
 import { TrendLineChart } from "@/components/dashboard/TrendLineChart";
 import { SpendingByCategory } from "@/components/dashboard/SpendingByCategory";
-import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { BudgetProgress } from "@/components/dashboard/BudgetProgress";
 import { GoalProgress } from "@/components/dashboard/GoalProgress";
 import { DateRangeFilter } from "@/components/dashboard/DateRangeFilter";
@@ -14,12 +14,53 @@ import { BRAND } from "@/lib/brand";
 
 const LOADING_CARD_KEYS = ['dashboard-loading-1', 'dashboard-loading-2', 'dashboard-loading-3', 'dashboard-loading-4'] as const;
 
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function periodToStartDate(period: string): string | undefined {
+  if (period === "all") return undefined;
+  const months = Number.parseInt(period, 10);
+  if (Number.isNaN(months) || months <= 0) return undefined;
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - months);
+  return toIsoDate(startDate);
+}
+
+function toMonthRange(dateString: string): { startDate: string; endDate: string } | null {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return null;
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return {
+    startDate: toIsoDate(start),
+    endDate: toIsoDate(end),
+  };
+}
+
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [period, setPeriod] = useState("all");
   const accountId = selectedAccount === "all" ? undefined : selectedAccount;
   const { summary, trends, spending, budgets, goals, loading, error } = useDashboard(accountId, period);
   const { accounts } = useAccounts();
+  const dashboardStartDate = periodToStartDate(period);
+
+  const navigateToTransactions = (filters: {
+    accountId?: string;
+    categoryId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (filters.accountId) params.set("accountId", filters.accountId);
+    if (filters.categoryId) params.set("categoryId", filters.categoryId);
+    if (filters.startDate) params.set("startDate", filters.startDate);
+    if (filters.endDate) params.set("endDate", filters.endDate);
+    const query = params.toString();
+    navigate(query ? `/transactions?${query}` : "/transactions");
+  };
 
   if (error) {
     return (
@@ -40,9 +81,11 @@ export function DashboardPage() {
             <Skeleton key={key} className="h-[120px] rounded-xl" />
           ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-7">
-          <Skeleton className="h-[350px] rounded-xl lg:col-span-4" />
-          <Skeleton className="h-[350px] rounded-xl lg:col-span-3" />
+        <div className="grid gap-4 md:grid-cols-2 [grid-auto-rows:1fr]">
+          <Skeleton className="h-[350px] rounded-xl" />
+          <Skeleton className="h-[350px] rounded-xl" />
+          <Skeleton className="h-[350px] rounded-xl" />
+          <Skeleton className="h-[350px] rounded-xl" />
         </div>
       </div>
     );
@@ -80,28 +123,32 @@ export function DashboardPage() {
 
       <NetWorthCard summary={summary} />
 
-      <div className="grid gap-4 lg:grid-cols-7">
-        <div className="lg:col-span-4">
-          <TrendLineChart data={trends} />
-        </div>
-        <div className="lg:col-span-3">
-          <SpendingByCategory data={spending} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-7">
-        <div className="lg:col-span-4">
-          <RecentTransactions accountId={accountId} />
-        </div>
-        <div className="lg:col-span-3">
-          <BudgetProgress budgets={budgets} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-7">
-        <div className="lg:col-span-4">
-          <GoalProgress goals={goals} />
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 [grid-auto-rows:1fr]">
+        <TrendLineChart
+          data={trends}
+          className="min-h-[390px]"
+          onPointSelect={(date) => {
+            const range = toMonthRange(date);
+            navigateToTransactions({
+              accountId,
+              startDate: range?.startDate,
+              endDate: range?.endDate,
+            });
+          }}
+        />
+        <SpendingByCategory
+          data={spending}
+          className="min-h-[390px]"
+          onCategorySelect={(categoryId) => {
+            navigateToTransactions({
+              accountId,
+              categoryId,
+              startDate: dashboardStartDate,
+            });
+          }}
+        />
+        <BudgetProgress budgets={budgets} className="min-h-[390px]" />
+        <GoalProgress goals={goals} className="min-h-[390px]" />
       </div>
     </div>
   );

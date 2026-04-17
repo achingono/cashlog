@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
 import type { Transaction, PaginatedResponse } from '../types';
 
-interface TransactionFilters {
+export interface TransactionFilters {
   accountId?: string;
   categoryId?: string;
   startDate?: string;

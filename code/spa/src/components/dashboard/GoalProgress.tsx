@@ -1,18 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import type { Goal } from "@/types";
 
 interface GoalProgressProps {
   goals: Goal[];
+  className?: string;
 }
 
-export function GoalProgress({ goals }: Readonly<GoalProgressProps>) {
+export function GoalProgress({ goals, className }: Readonly<GoalProgressProps>) {
   const activeGoals = goals.filter(g => g.status === 'ACTIVE');
 
   if (activeGoals.length === 0) {
     return (
-      <Card>
+      <Card className={cn("h-full", className)}>
         <CardHeader>
           <CardTitle>Goal Progress</CardTitle>
           <CardDescription>Track your savings goals</CardDescription>
@@ -27,12 +29,12 @@ export function GoalProgress({ goals }: Readonly<GoalProgressProps>) {
   }
 
   return (
-    <Card>
+    <Card className={cn("h-full", className)}>
       <CardHeader>
         <CardTitle>Goal Progress</CardTitle>
         <CardDescription>Active savings goals</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-h-[260px] overflow-y-auto pr-1">
         {activeGoals.slice(0, 5).map((goal) => {
           const isComplete = goal.percentComplete >= 100;
           return (

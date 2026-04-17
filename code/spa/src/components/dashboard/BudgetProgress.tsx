@@ -1,16 +1,18 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatPercent } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import type { Budget } from "@/types";
 
 interface BudgetProgressProps {
   budgets: Budget[];
+  className?: string;
 }
 
-export function BudgetProgress({ budgets }: Readonly<BudgetProgressProps>) {
+export function BudgetProgress({ budgets, className }: Readonly<BudgetProgressProps>) {
   if (budgets.length === 0) {
     return (
-      <Card>
+      <Card className={cn("h-full", className)}>
         <CardHeader>
           <CardTitle>Budget Progress</CardTitle>
           <CardDescription>Track your spending limits</CardDescription>
@@ -25,13 +27,13 @@ export function BudgetProgress({ budgets }: Readonly<BudgetProgressProps>) {
   }
 
   return (
-    <Card>
+    <Card className={cn("h-full", className)}>
       <CardHeader>
         <CardTitle>Budget Progress</CardTitle>
         <CardDescription>This month's spending vs. limits</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {budgets.map((budget) => {
+      <CardContent className="space-y-4 max-h-[260px] overflow-y-auto pr-1">
+        {budgets.slice(0, 6).map((budget) => {
           const isOver = budget.percentUsed > 100;
           return (
             <div key={budget.id} className="space-y-1.5">

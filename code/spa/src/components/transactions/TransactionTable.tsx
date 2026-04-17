@@ -23,7 +23,7 @@ export function TransactionTable({ transactions, pagination, onPageChange, onCat
 
   return (
     <div>
-      <Table>
+      <Table className="min-w-[680px]">
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>

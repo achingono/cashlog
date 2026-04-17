@@ -1,12 +1,15 @@
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { cn } from "@/lib/utils";
 import type { TrendDataPoint } from "@/types";
 
 interface TrendLineChartProps {
   data: TrendDataPoint[];
   title?: string;
   description?: string;
+  className?: string;
+  onPointSelect?: (date: string) => void;
 }
 
 const chartConfig = {
@@ -16,16 +19,44 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function TrendLineChart({ data, title = "Net Worth Trend", description = "Your net worth over time" }: Readonly<TrendLineChartProps>) {
+type TrendChartClickState = {
+  activePayload?: Array<{
+    payload?: TrendDataPoint;
+  }>;
+};
+
+export function TrendLineChart({
+  data,
+  title = "Net Worth Trend",
+  description = "Your net worth over time",
+  className,
+  onPointSelect,
+}: Readonly<TrendLineChartProps>) {
+  const handleChartClick = (state: TrendChartClickState) => {
+    const date = state.activePayload?.[0]?.payload?.date;
+    if (date && onPointSelect) {
+      onPointSelect(date);
+    }
+  };
+
   return (
-    <Card>
+    <Card className={cn("h-full", className)}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription>
+          {description}
+          {onPointSelect ? " • Tap a point to view related transactions" : ""}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+      <CardContent className="h-full">
+        <ChartContainer
+          config={chartConfig}
+          className={cn(
+            "h-[240px] w-full sm:h-[280px]",
+            onPointSelect && "[&_.recharts-surface]:cursor-pointer"
+          )}
+        >
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} onClick={handleChartClick}>
             <defs>
               <linearGradient id="fillValue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--color-value)" stopOpacity={0.3} />
