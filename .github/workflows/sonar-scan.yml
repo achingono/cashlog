@@ -78,6 +78,8 @@ jobs:
           git checkout -b "${BRANCH_NAME}"
 
       - name: Run Copilot CLI to apply Sonar fixes
+        id: copilot-fix
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -85,12 +87,14 @@ jobs:
           copilot --allow-all --prompt "Read .sonar/issues.json and apply code fixes for all open SonarQube issues in this repository. Keep behavior unchanged, update docs/sonar-prds with scripts/sonar/generate-prds.sh after fixes, and leave the repository in a buildable state."
 
       - name: Regenerate Sonar artifacts after Copilot fixes
+        if: steps.copilot-fix.outcome == 'success'
         run: |
           scripts/sonar/run-scan.sh
           scripts/sonar/summarize-issues.sh .sonar/issues.json .sonar
           scripts/sonar/generate-prds.sh .sonar/issues.json docs
 
       - name: Commit and push fix branch
+        if: steps.copilot-fix.outcome == 'success'
         env:
           BRANCH_NAME: ${{ steps.fix-branch.outputs.branch }}
         run: |
