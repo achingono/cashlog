@@ -34,23 +34,37 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
   const [error, setError] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryParentId, setNewCategoryParentId] = useState<string>('none');
   const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryParentId, setEditCategoryParentId] = useState<string>('none');
   const [isManaging, setIsManaging] = useState(false);
   const [manageError, setManageError] = useState<string | null>(null);
 
   const leafCategories = useMemo(() => {
-    const flattened: Category[] = [];
-    const walk = (node: Category) => {
+    const flattened: Array<{ id: string; name: string; label: string; parentId: string | null }> = [];
+    const walk = (node: Category, parentName?: string) => {
       const children = Array.isArray(node.children) ? node.children : [];
       if (children.length === 0) {
-        flattened.push(node);
+        flattened.push({
+          id: node.id,
+          name: node.name,
+          label: parentName ? `${parentName} / ${node.name}` : node.name,
+          parentId: node.parentId,
+        });
         return;
       }
-      children.forEach(walk);
+      children.forEach((child) => walk(child, node.name));
     };
-    categories.forEach(walk);
-    return flattened.sort((a, b) => a.name.localeCompare(b.name));
+    categories.forEach((category) => walk(category));
+    return flattened.sort((a, b) => a.label.localeCompare(b.label));
   }, [categories]);
+
+  const parentCategoryOptions = useMemo(() => (
+    categories
+      .filter((category) => category.id !== categoryId)
+      .map((category) => ({ id: category.id, name: category.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  ), [categories, categoryId]);
 
   useEffect(() => {
     if (!open || !transaction) return;
@@ -63,12 +77,14 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
   useEffect(() => {
     const selected = leafCategories.find((category) => category.id === categoryId);
     setEditCategoryName(selected?.name ?? '');
+    setEditCategoryParentId(selected?.parentId ?? 'none');
   }, [leafCategories, categoryId]);
 
   useEffect(() => {
     if (!manageOpen) {
       setManageError(null);
       setNewCategoryName('');
+      setNewCategoryParentId('none');
     }
   }, [manageOpen]);
 
@@ -126,7 +142,10 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
     setManageError(null);
     setIsManaging(true);
     try {
-      const response = await api.createCategory({ name });
+      const response = await api.createCategory({
+        name,
+        parentId: newCategoryParentId === 'none' ? undefined : newCategoryParentId,
+      });
       setCategoryId(response.data.id);
       setNewCategoryName('');
       await onCategoriesChanged();
@@ -151,7 +170,10 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
     setManageError(null);
     setIsManaging(true);
     try {
-      await api.updateCategory(categoryId, { name });
+      await api.updateCategory(categoryId, {
+        name,
+        parentId: editCategoryParentId === 'none' ? null : editCategoryParentId,
+      });
       await onCategoriesChanged();
     } catch (manageUpdateError: any) {
       setManageError(manageUpdateError.message || 'Failed to update category.');
@@ -181,7 +203,7 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
               </SelectTrigger>
               <SelectContent>
                 {leafCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                  <SelectItem key={category.id} value={category.id}>{category.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -240,12 +262,40 @@ export function RecategorizeDialog({ open, transaction, categories, onClose, onA
                 <Input id="new-category-name" value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="e.g. Streaming" />
                 <Button type="submit" disabled={isManaging}>Add</Button>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-category-parent">Parent Category</Label>
+                <Select value={newCategoryParentId} onValueChange={setNewCategoryParentId}>
+                  <SelectTrigger id="new-category-parent">
+                    <SelectValue placeholder="No parent (top-level)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No parent (top-level)</SelectItem>
+                    {parentCategoryOptions.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </form>
             <form onSubmit={handleRenameCategory} className="space-y-2">
               <Label htmlFor="edit-category-name">Rename Selected Category</Label>
               <div className="flex gap-2">
                 <Input id="edit-category-name" value={editCategoryName} onChange={(event) => setEditCategoryName(event.target.value)} placeholder="Select a category first" />
                 <Button type="submit" variant="outline" disabled={isManaging || !categoryId}>Save</Button>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category-parent">Move Under Parent</Label>
+                <Select value={editCategoryParentId} onValueChange={setEditCategoryParentId} disabled={!categoryId}>
+                  <SelectTrigger id="edit-category-parent">
+                    <SelectValue placeholder="No parent (top-level)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No parent (top-level)</SelectItem>
+                    {parentCategoryOptions.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </form>
             {manageError && (
