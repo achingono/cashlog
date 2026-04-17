@@ -4,13 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Star, TrendingUp, Lightbulb, Loader2, FileBarChart, Scissors, Shield, HandCoins } from "lucide-react";
+import { FileText, Star, TrendingUp, Lightbulb, Loader2, FileBarChart, Scissors, Shield, HandCoins, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { PFSExecutiveSummary } from "@/components/reports/PFSExecutiveSummary";
 import { PFSFinancialCondition } from "@/components/reports/PFSFinancialCondition";
 import { PFSNarrative } from "@/components/reports/PFSNarrative";
 import { PFSExportButton } from "@/components/reports/PFSExportButton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import type { Report, PFSContent, ReportContent, SpendingAnalysisContent } from "@/types";
 
 const LOADING_CARD_KEYS = ['report-loading-1', 'report-loading-2', 'report-loading-3', 'report-loading-4'] as const;
@@ -26,51 +29,93 @@ function isSpendingAnalysisContent(content: ReportContent | PFSContent | Spendin
 interface ReportDetailViewProps {
   report: Report;
   onBack: () => void;
+  onDelete: (reportId: string) => Promise<void>;
+  deleting: boolean;
 }
 
-function PFSDetailView({ report, onBack }: Readonly<ReportDetailViewProps>) {
+function PFSExportDocument({ report, content }: Readonly<{ report: Report; content: PFSContent }>) {
+  return (
+    <div className="space-y-6 bg-white p-8 text-black">
+      <div>
+        <h2 className="text-2xl font-bold">{report.title}</h2>
+        <p className="text-sm text-slate-600">Generated {formatDate(report.generatedAt)} · Period {content.periodCovered}</p>
+      </div>
+      <PFSExecutiveSummary content={content} />
+      <PFSFinancialCondition content={content} />
+      <PFSNarrative content={content} />
+    </div>
+  );
+}
+
+function PFSDetailView({ report, onBack, onDelete, deleting }: Readonly<ReportDetailViewProps>) {
   const content = report.content as PFSContent;
-  const printRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">{report.title}</h2>
         <div className="flex items-center gap-2">
-          <PFSExportButton targetRef={printRef} fileName={`pfs-${content.periodCovered}`} />
+          <PFSExportButton targetRef={exportRef} fileName={`pfs-${content.periodCovered}`} />
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deleting}
+            onClick={() => {
+              onDelete(report.id).catch(console.error);
+            }}
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
           <Button variant="ghost" size="sm" onClick={onBack}>← Back to Reports</Button>
         </div>
       </div>
 
-      <div ref={printRef}>
-        <Tabs defaultValue="summary">
-          <TabsList>
-            <TabsTrigger value="summary">Executive Summary</TabsTrigger>
-            <TabsTrigger value="details">Financial Condition</TabsTrigger>
-            <TabsTrigger value="narrative">CPA Narrative</TabsTrigger>
-          </TabsList>
-          <TabsContent value="summary" className="mt-4">
-            <PFSExecutiveSummary content={content} />
-          </TabsContent>
-          <TabsContent value="details" className="mt-4">
-            <PFSFinancialCondition content={content} />
-          </TabsContent>
-          <TabsContent value="narrative" className="mt-4">
-            <PFSNarrative content={content} />
-          </TabsContent>
-        </Tabs>
+      <Tabs defaultValue="summary">
+        <TabsList>
+          <TabsTrigger value="summary">Executive Summary</TabsTrigger>
+          <TabsTrigger value="details">Financial Condition</TabsTrigger>
+          <TabsTrigger value="narrative">CPA Narrative</TabsTrigger>
+        </TabsList>
+        <TabsContent value="summary" className="mt-4">
+          <PFSExecutiveSummary content={content} />
+        </TabsContent>
+        <TabsContent value="details" className="mt-4">
+          <PFSFinancialCondition content={content} />
+        </TabsContent>
+        <TabsContent value="narrative" className="mt-4">
+          <PFSNarrative content={content} />
+        </TabsContent>
+      </Tabs>
+
+      <div className="pointer-events-none fixed left-[-10000px] top-0 w-[1100px] opacity-100" aria-hidden>
+        <div ref={exportRef}>
+          <PFSExportDocument report={report} content={content} />
+        </div>
       </div>
     </div>
   );
 }
 
-function MonthlyReportDetailView({ report, onBack }: Readonly<ReportDetailViewProps>) {
+function MonthlyReportDetailView({ report, onBack, onDelete, deleting }: Readonly<ReportDetailViewProps>) {
   const c = report.content as ReportContent;
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">{c.title}</h2>
-        <Button variant="ghost" size="sm" onClick={onBack}>← Back to Reports</Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deleting}
+            onClick={() => {
+              onDelete(report.id).catch(console.error);
+            }}
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onBack}>← Back to Reports</Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -105,13 +150,25 @@ function MonthlyReportDetailView({ report, onBack }: Readonly<ReportDetailViewPr
   );
 }
 
-function SpendingAnalysisDetailView({ report, onBack }: Readonly<ReportDetailViewProps>) {
+function SpendingAnalysisDetailView({ report, onBack, onDelete, deleting }: Readonly<ReportDetailViewProps>) {
   const c = report.content as SpendingAnalysisContent;
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">{report.title}</h2>
-        <Button variant="ghost" size="sm" onClick={onBack}>← Back to Reports</Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deleting}
+            onClick={() => {
+              onDelete(report.id).catch(console.error);
+            }}
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onBack}>← Back to Reports</Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -197,6 +254,17 @@ export function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generatingExpense, setGeneratingExpense] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
+
+  const mergeReportIntoList = (nextReport: Report) => {
+    setReports((prev) => {
+      const filtered = prev.filter(
+        (report) => !(report.id === nextReport.id || (report.type === nextReport.type && report.period === nextReport.period)),
+      );
+      return [nextReport, ...filtered];
+    });
+  };
 
   useEffect(() => {
     api.getReports()
@@ -208,11 +276,13 @@ export function ReportsPage() {
   const handleGeneratePFS = async () => {
     setGenerating(true);
     try {
-      const res = await api.generatePFS();
-      setReports(prev => [res.data, ...prev]);
+      const res = await api.generatePFS({ overwriteExisting });
+      mergeReportIntoList(res.data);
       setSelectedReport(res.data);
+      toast.success(overwriteExisting ? "Financial statement overwritten" : "Financial statement generated");
     } catch (err) {
-      console.error('Failed to generate PFS:', err);
+      console.error("Failed to generate PFS:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to generate financial statement");
     } finally {
       setGenerating(false);
     }
@@ -221,13 +291,35 @@ export function ReportsPage() {
   const handleGenerateExpenseAnalysis = async () => {
     setGeneratingExpense(true);
     try {
-      const res = await api.generateExpenseAnalysis();
-      setReports(prev => [res.data, ...prev]);
+      const res = await api.generateExpenseAnalysis({ overwriteExisting });
+      mergeReportIntoList(res.data);
       setSelectedReport(res.data);
+      toast.success(overwriteExisting ? "Expense analysis overwritten" : "Expense analysis generated");
     } catch (err) {
-      console.error('Failed to generate expense analysis:', err);
+      console.error("Failed to generate expense analysis:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to generate expense analysis");
     } finally {
       setGeneratingExpense(false);
+    }
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    const confirmed = window.confirm("Delete this report permanently?");
+    if (!confirmed) return;
+
+    setDeletingReportId(reportId);
+    try {
+      await api.deleteReport(reportId);
+      setReports((prev) => prev.filter((report) => report.id !== reportId));
+      if (selectedReport?.id === reportId) {
+        setSelectedReport(null);
+      }
+      toast.success("Report deleted");
+    } catch (err) {
+      console.error("Failed to delete report:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete report");
+    } finally {
+      setDeletingReportId(null);
     }
   };
 
@@ -244,12 +336,33 @@ export function ReportsPage() {
     const isPFS = selectedReport.type === 'PERSONAL_FINANCIAL_STATEMENT' && isPFSContent(selectedReport.content);
     const isExpenseAnalysis = selectedReport.type === 'SPENDING_ANALYSIS' && isSpendingAnalysisContent(selectedReport.content);
     if (isPFS) {
-      return <PFSDetailView report={selectedReport} onBack={() => setSelectedReport(null)} />;
+      return (
+        <PFSDetailView
+          report={selectedReport}
+          onBack={() => setSelectedReport(null)}
+          onDelete={handleDeleteReport}
+          deleting={deletingReportId === selectedReport.id}
+        />
+      );
     }
     if (isExpenseAnalysis) {
-      return <SpendingAnalysisDetailView report={selectedReport} onBack={() => setSelectedReport(null)} />;
+      return (
+        <SpendingAnalysisDetailView
+          report={selectedReport}
+          onBack={() => setSelectedReport(null)}
+          onDelete={handleDeleteReport}
+          deleting={deletingReportId === selectedReport.id}
+        />
+      );
     }
-    return <MonthlyReportDetailView report={selectedReport} onBack={() => setSelectedReport(null)} />;
+    return (
+      <MonthlyReportDetailView
+        report={selectedReport}
+        onBack={() => setSelectedReport(null)}
+        onDelete={handleDeleteReport}
+        deleting={deletingReportId === selectedReport.id}
+      />
+    );
   }
 
   return (
@@ -257,6 +370,10 @@ export function ReportsPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <Switch id="overwrite-existing" checked={overwriteExisting} onCheckedChange={(checked) => setOverwriteExisting(checked === true)} />
+            <Label htmlFor="overwrite-existing" className="text-xs text-muted-foreground">Overwrite current period</Label>
+          </div>
           <Button onClick={handleGenerateExpenseAnalysis} disabled={generatingExpense}>
             {generatingExpense ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>
@@ -287,7 +404,21 @@ export function ReportsPage() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{report.title}</CardTitle>
-                      <Badge variant="default">PFS</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default">PFS</Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={deletingReportId === report.id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteReport(report.id).catch(console.error);
+                          }}
+                        >
+                          {deletingReportId === report.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription>{formatDate(report.generatedAt)} · {report.period}</CardDescription>
                   </CardHeader>
@@ -320,7 +451,21 @@ export function ReportsPage() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{report.title}</CardTitle>
-                      <Badge variant="secondary">Expense</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Expense</Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={deletingReportId === report.id}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteReport(report.id).catch(console.error);
+                          }}
+                        >
+                          {deletingReportId === report.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
                     <CardDescription>{formatDate(report.generatedAt)} · {report.period}</CardDescription>
                   </CardHeader>
@@ -350,7 +495,21 @@ export function ReportsPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{monthlyContent.title || report.title}</CardTitle>
-                    <Badge>{monthlyContent.overallScore}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge>{monthlyContent.overallScore}</Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={deletingReportId === report.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteReport(report.id).catch(console.error);
+                        }}
+                      >
+                        {deletingReportId === report.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
                   <CardDescription>{formatDate(report.generatedAt)} · {report.period}</CardDescription>
                 </CardHeader>

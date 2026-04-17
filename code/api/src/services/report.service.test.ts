@@ -6,13 +6,14 @@ const { prismaMock } = vi.hoisted(() => ({
       findMany: vi.fn(),
       count: vi.fn(),
       findUnique: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }));
 
 vi.mock('../lib/prisma', () => ({ prisma: prismaMock }));
 
-import { getReportById, getReports } from './report.service';
+import { deleteReportById, getReportById, getReports } from './report.service';
 
 describe('report.service', () => {
   beforeEach(() => {
@@ -34,5 +35,11 @@ describe('report.service', () => {
   it('returns report by id', async () => {
     prismaMock.report.findUnique.mockResolvedValue({ id: 'r1', title: 'Jan report' });
     await expect(getReportById('r1')).resolves.toEqual({ id: 'r1', title: 'Jan report' });
+  });
+
+  it('deletes report by id', async () => {
+    prismaMock.report.delete.mockResolvedValue({ id: 'r1' });
+    await deleteReportById('r1');
+    expect(prismaMock.report.delete).toHaveBeenCalledWith({ where: { id: 'r1' } });
   });
 });

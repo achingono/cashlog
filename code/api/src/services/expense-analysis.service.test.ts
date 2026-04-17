@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     transaction: { findMany: vi.fn() },
-    report: { findFirst: vi.fn(), create: vi.fn() },
+    report: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
   },
 }));
 
@@ -138,5 +138,38 @@ describe('expense-analysis.service', () => {
     expect(prismaMock.transaction.findMany).not.toHaveBeenCalled();
     expect(openAiMock.chat.completions.create).not.toHaveBeenCalled();
     expect(prismaMock.report.create).not.toHaveBeenCalled();
+  });
+
+  it('overwrites existing report when requested', async () => {
+    azureConfigMock.getMissingAzureOpenAIConfig.mockReturnValue([]);
+    prismaMock.report.findFirst.mockResolvedValue({ id: 'existing', type: 'SPENDING_ANALYSIS' });
+    prismaMock.transaction.findMany.mockResolvedValue([]);
+    openAiMock.chat.completions.create.mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            overview: '',
+            subscriptionStrategy: { analysis: '', actions: [] },
+            insuranceStrategy: { analysis: '', actions: [] },
+            negotiationStrategy: { analysis: '', actions: [] },
+            prioritizedActionPlan: [],
+            overallInsight: '',
+          }),
+        },
+      }],
+    });
+    prismaMock.report.update.mockResolvedValue({ id: 'existing', type: 'SPENDING_ANALYSIS' });
+
+    const result = await generateExpenseAnalysis({ overwriteExisting: true });
+
+    expect(result).toEqual({ id: 'existing', type: 'SPENDING_ANALYSIS' });
+    expect(prismaMock.report.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'existing' },
+        data: expect.objectContaining({
+          content: expect.any(Object),
+        }),
+      }),
+    );
   });
 });

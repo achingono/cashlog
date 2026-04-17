@@ -161,11 +161,45 @@ describe('api client', () => {
       json: vi.fn().mockResolvedValue({ data: { id: 'r-exp', type: 'SPENDING_ANALYSIS' } }),
     });
 
-    await api.generateExpenseAnalysis();
+    await api.generateExpenseAnalysis({ overwriteExisting: true });
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/reports/expense-analysis',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ overwriteExisting: true }),
+      }),
+    );
+  });
+
+  it('supports report deletion and PFS overwrite generation', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue({ data: { id: 'r-pfs', type: 'PERSONAL_FINANCIAL_STATEMENT' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: vi.fn(),
+      });
+
+    await api.generatePFS({ overwriteExisting: true });
+    await api.deleteReport('r-pfs');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/reports',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ overwriteExisting: true }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/reports/r-pfs',
+      expect.objectContaining({ method: 'DELETE' }),
     );
   });
 

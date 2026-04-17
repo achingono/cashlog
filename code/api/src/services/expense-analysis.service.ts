@@ -328,19 +328,20 @@ export function analyzeExpenseOptimization(transactions: ExpenseTransaction[], p
   };
 }
 
-export async function generateExpenseAnalysis(): Promise<any> {
+export async function generateExpenseAnalysis(options: { overwriteExisting?: boolean } = {}): Promise<any> {
   const missingConfig = getMissingAzureOpenAIConfig();
   if (missingConfig.length > 0) {
     throw new Error(`Missing Azure OpenAI config: ${missingConfig.join(', ')}`);
   }
 
   const now = new Date();
+  const overwriteExisting = options.overwriteExisting === true;
   const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   const existing = await prisma.report.findFirst({
     where: { type: ReportType.SPENDING_ANALYSIS, period },
     orderBy: { generatedAt: 'desc' },
   });
-  if (existing) return existing;
+  if (existing && !overwriteExisting) return existing;
 
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 6, 1));
   const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -426,6 +427,17 @@ export async function generateExpenseAnalysis(): Promise<any> {
     prioritizedActionPlan: insights.prioritizedActionPlan ?? [],
     overallInsight: insights.overallInsight ?? '',
   };
+
+  if (existing && overwriteExisting) {
+    return prisma.report.update({
+      where: { id: existing.id },
+      data: {
+        title: `Expense Optimization Analysis - ${period}`,
+        content: content as unknown as Prisma.InputJsonValue,
+        generatedAt: now,
+      },
+    });
+  }
 
   return prisma.report.create({
     data: {

@@ -79,6 +79,7 @@ const { reportServiceMock } = vi.hoisted(() => ({
   reportServiceMock: {
     getReports: vi.fn(),
     getReportById: vi.fn(),
+    deleteReportById: vi.fn(),
   },
 }));
 const { pfsServiceMock } = vi.hoisted(() => ({
@@ -340,7 +341,8 @@ describe('API route integration', () => {
     categoryServiceMock.createCategory.mockResolvedValue({ id: 'c2' });
     categoryServiceMock.updateCategory.mockResolvedValue({ id: 'c2', name: 'Trips' });
     reportServiceMock.getReports.mockResolvedValue({ data: [{ id: 'r1' }], pagination: { page: 1, limit: 10, total: 1, totalPages: 1 } });
-    reportServiceMock.getReportById.mockResolvedValueOnce({ id: 'r1' }).mockResolvedValueOnce(null);
+    reportServiceMock.getReportById.mockResolvedValueOnce({ id: 'r1' }).mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'r1' });
+    reportServiceMock.deleteReportById.mockResolvedValue(undefined);
     pfsServiceMock.generatePFS.mockResolvedValue({ id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' });
     expenseAnalysisServiceMock.generateExpenseAnalysis.mockResolvedValue({ id: 'sea1', type: 'SPENDING_ANALYSIS' });
     syncServiceMock.getLatestSync.mockResolvedValue({ id: 's1' });
@@ -363,8 +365,12 @@ describe('API route integration', () => {
     await request(app).get('/api/reports?page=1&limit=10').expect(200);
     await request(app).get('/api/reports/r1').expect(200);
     await request(app).get('/api/reports/missing').expect(404);
-    await request(app).post('/api/reports').expect(201).expect({ data: { id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' } });
-    await request(app).post('/api/reports/expense-analysis').expect(201).expect({ data: { id: 'sea1', type: 'SPENDING_ANALYSIS' } });
+    await request(app).post('/api/reports').send({ overwriteExisting: true }).expect(201).expect({ data: { id: 'pfs1', type: 'PERSONAL_FINANCIAL_STATEMENT' } });
+    await request(app).post('/api/reports/expense-analysis').send({ overwriteExisting: true }).expect(201).expect({ data: { id: 'sea1', type: 'SPENDING_ANALYSIS' } });
+    expect(pfsServiceMock.generatePFS).toHaveBeenCalledWith({ overwriteExisting: true });
+    expect(expenseAnalysisServiceMock.generateExpenseAnalysis).toHaveBeenCalledWith({ overwriteExisting: true });
+    await request(app).delete('/api/reports/r1').expect(204);
+    await request(app).delete('/api/reports/missing').expect(404);
 
     await request(app).get('/api/sync/status').expect(200).expect({ data: { id: 's1' } });
     await request(app).get('/api/sync/history?limit=5').expect(200).expect({ data: [{ id: 's1' }] });

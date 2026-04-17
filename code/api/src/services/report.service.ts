@@ -24,3 +24,7 @@ export async function getReports(page: number = 1, limit: number = 10) {
 export async function getReportById(id: string) {
   return prisma.report.findUnique({ where: { id } });
 }
+
+export async function deleteReportById(id: string) {
+  await prisma.report.delete({ where: { id } });
+}

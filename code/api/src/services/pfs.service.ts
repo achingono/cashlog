@@ -161,13 +161,23 @@ export function buildAssetAllocation(
   }));
 }
 
-export async function generatePFS(): Promise<any> {
+export async function generatePFS(options: { overwriteExisting?: boolean } = {}): Promise<any> {
   const missingConfig = getMissingAzureOpenAIConfig();
   if (missingConfig.length > 0) {
     throw new Error(`Missing Azure OpenAI config: ${missingConfig.join(', ')}`);
   }
 
   const now = new Date();
+  const overwriteExisting = options.overwriteExisting === true;
+  const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const existing = await prisma.report.findFirst({
+    where: { type: ReportType.PERSONAL_FINANCIAL_STATEMENT, period: periodStr },
+    orderBy: { generatedAt: 'desc' },
+  });
+  if (existing && !overwriteExisting) {
+    return existing;
+  }
+
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
 
@@ -247,9 +257,6 @@ export async function generatePFS(): Promise<any> {
       type: a.type,
     }));
 
-  // Build period string
-  const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
   // Build LLM prompt with pre-calculated data
   const prompt = buildPFSPrompt({
     balanceSheet,
@@ -310,6 +317,17 @@ export async function generatePFS(): Promise<any> {
     },
     overallInsight: narrative.overallInsight || '',
   };
+
+  if (existing && overwriteExisting) {
+    return prisma.report.update({
+      where: { id: existing.id },
+      data: {
+        title: `Personal Financial Statement - ${periodStr}`,
+        content: pfsContent as unknown as Prisma.InputJsonValue,
+        generatedAt: now,
+      },
+    });
+  }
 
   // Store as Report
   const report = await prisma.report.create({

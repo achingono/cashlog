@@ -145,8 +145,17 @@ export const api = {
   // Reports
   getReports: (page = 1, limit = 10) => request<import('../types').PaginatedResponse<import('../types').Report>>(`/reports?page=${page}&limit=${limit}`),
   getReport: (id: string) => request<{ data: import('../types').Report }>(`/reports/${id}`),
-  generatePFS: () => request<{ data: import('../types').Report }>('/reports', { method: 'POST' }),
-  generateExpenseAnalysis: () => request<{ data: import('../types').Report }>('/reports/expense-analysis', { method: 'POST' }),
+  generatePFS: (options: { overwriteExisting?: boolean } = {}) =>
+    request<{ data: import('../types').Report }>('/reports', {
+      method: 'POST',
+      body: JSON.stringify({ overwriteExisting: options.overwriteExisting === true }),
+    }),
+  generateExpenseAnalysis: (options: { overwriteExisting?: boolean } = {}) =>
+    request<{ data: import('../types').Report }>('/reports/expense-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ overwriteExisting: options.overwriteExisting === true }),
+    }),
+  deleteReport: (id: string) => request(`/reports/${id}`, { method: 'DELETE' }),
 
   // Sync
   getSyncStatus: () => request<{ data: import('../types').SyncStatus | null }>('/sync/status'),

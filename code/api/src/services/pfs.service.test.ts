@@ -16,7 +16,9 @@ const { prismaMock } = vi.hoisted(() => ({
       findMany: vi.fn(),
     },
     report: {
+      findFirst: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
@@ -231,6 +233,7 @@ describe('pfs.service', () => {
 
     it('generates a full PFS report', async () => {
       azureConfigMock.getMissingAzureOpenAIConfig.mockReturnValue([]);
+      prismaMock.report.findFirst.mockResolvedValue(null);
 
       prismaMock.account.findMany.mockResolvedValue([
         { id: 'a1', name: 'Checking', type: 'CHECKING', balance: new Decimal('10000'), isActive: true },
@@ -279,6 +282,18 @@ describe('pfs.service', () => {
           }),
         }),
       );
+    });
+
+    it('returns existing report for current period unless overwrite is requested', async () => {
+      azureConfigMock.getMissingAzureOpenAIConfig.mockReturnValue([]);
+      prismaMock.report.findFirst.mockResolvedValue({ id: 'existing', type: 'PERSONAL_FINANCIAL_STATEMENT' });
+
+      const result = await generatePFS();
+
+      expect(result).toEqual({ id: 'existing', type: 'PERSONAL_FINANCIAL_STATEMENT' });
+      expect(prismaMock.account.findMany).not.toHaveBeenCalled();
+      expect(openAiMock.chat.completions.create).not.toHaveBeenCalled();
+      expect(prismaMock.report.create).not.toHaveBeenCalled();
     });
   });
 });
