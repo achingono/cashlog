@@ -10,7 +10,7 @@
 
 ![Doughray product cover showcasing dashboard, transactions, budgets, goals, and reports](docs/cover-image.png)
 
-A self-hosted personal finance dashboard that aggregates all your bank accounts, track net worth, visualize spending, and get AI-generated monthly financial reports, all running privately on your own hardware.
+A self-hosted personal finance dashboard that aggregates all your bank accounts, tracks net worth, visualizes spending, and generates AI-powered financial reports while running privately on your own hardware.
 
 [Features](#-features) · [Quick Start](#-quick-start) · [Architecture](#-architecture) · [Tech Stack](#-tech-stack) · [Configuration](#configuration)
 
@@ -20,7 +20,7 @@ A self-hosted personal finance dashboard that aggregates all your bank accounts,
 
 ## ✨ Features
 
-- 📊 **Dashboard** — Net worth hero card, trendline charts, income vs expenses, spending by category donut chart, budget progress bars, and recent transactions
+- 📊 **Dashboard** — Net worth hero card, trendline charts, income vs expenses, spending by category donut chart, budget progress, and goal progress cards
 - 🏦 **Holdings** — Assets vs liabilities summary, accounts grouped by type (Checking, Savings, Credit Card, Investment, Loan, Mortgage), allocation pie chart, and account detail drawer with mini transaction history
 - 💳 **Transactions** — Consolidated list across all accounts with filters (account, date range, category, search), sortable table, color-coded category badges, inline category editing, and server-side pagination
 - 📥 **Transaction Import** — Upload OFX/QFX/CSV exports into an existing account or a newly created account, or import multi-account Excel activity exports with automatic account detection, duplicate detection, and categorization trigger
@@ -101,15 +101,17 @@ open http://localhost
 
 ## 📸 Screenshots
 
-> 🚧 **Coming soon** — Screenshots of each screen will be added here.
-
 | Dashboard | Holdings | Transactions |
 | :-------: | :------: | :----------: |
-| *Coming soon* | *Coming soon* | *Coming soon* |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Holdings](docs/screenshots/holdings.png) | ![Transactions](docs/screenshots/transactions.png) |
 
-| Reports | Settings |
-| :-----: | :------: |
-| *Coming soon* | *Coming soon* |
+| Budgets | Goals | Reports |
+| :-----: | :---: | :-----: |
+| ![Budgets](docs/screenshots/budgets.png) | ![Goals](docs/screenshots/goals.png) | ![Reports](docs/screenshots/reports.png) |
+
+| Settings |
+| :------: |
+| ![Settings](docs/screenshots/settings.png) |
 
 ---
 

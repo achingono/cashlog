@@ -1162,56 +1162,54 @@ cron.schedule('0 8 * * 1', async () => {
 
 ### API Testing
 
-The project uses **Express** with straightforward request/response patterns that are easy to test with **Jest** + **supertest**:
+The API uses **Vitest**:
 
 ```bash
-# Install test dependencies (if not already present)
-cd api
-npm install --save-dev jest ts-jest @types/jest supertest @types/supertest
-```
-
-Example test:
-
-```typescript
-// api/src/__tests__/accounts.test.ts
-import request from 'supertest';
-import app from '../index';
-
-describe('GET /api/accounts', () => {
-  it('returns a list of accounts', async () => {
-    const res = await request(app).get('/api/accounts');
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('data');
-    expect(Array.isArray(res.body.data)).toBe(true);
-  });
-});
+cd code
+npm run test:api
 ```
 
 ### SPA Testing
 
-The SPA uses **Vite**, which pairs well with **Vitest** + **React Testing Library**:
+The SPA uses **Vitest** + **React Testing Library**:
 
 ```bash
-cd spa
-npm install --save-dev vitest @testing-library/react @testing-library/jest-dom jsdom
+cd code
+npm run test:spa
 ```
 
-Example test:
+### Worker Testing
 
-```tsx
-// spa/src/__tests__/GoalsPage.test.tsx
-import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { GoalsPage } from '../pages/GoalsPage';
+The worker also uses **Vitest**:
 
-it('renders the goals heading', () => {
-  render(
-    <BrowserRouter>
-      <GoalsPage />
-    </BrowserRouter>
-  );
-  expect(screen.getByText('Goals')).toBeInTheDocument();
-});
+```bash
+cd code
+npm run test:worker
+```
+
+### End-to-End Testing (Playwright)
+
+Run the full Playwright suite:
+
+```bash
+cd code
+npm run test:e2e
+```
+
+Run a single Playwright spec:
+
+```bash
+cd code/spa
+npm run test:e2e -- e2e/mobile-ui.spec.ts
+```
+
+### Generating Documentation Screenshots
+
+Screenshots for `README.md` are generated with Playwright and include in-browser obfuscation of financial amounts before capture:
+
+```bash
+cd code/spa
+PLAYWRIGHT_BASE_URL=http://localhost:5173 npm run test:e2e -- e2e/generate-doc-screenshots.spec.ts
 ```
 
 ### Manual Testing
